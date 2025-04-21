@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase/config";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import RateCaptain from "../../components/RateCaptain";
 import UpiPayment from "../../components/UpiPayment";
+import AnimatedWrapper from "../../components/AnimatedWrapper";
+import { gsap } from "gsap";
 
 const UserRideHistory = () => {
   const { user } = useAuth();
@@ -129,13 +131,31 @@ const UserRideHistory = () => {
     fetchRides();
   };
 
+  // Ref for animations
+  const ridesRef = useRef(null);
+
+  // GSAP animations
+  useEffect(() => {
+    if (ridesRef.current && !loading && rides.length > 0) {
+      const rideCards = ridesRef.current.querySelectorAll('.ride-card');
+      gsap.fromTo(rideCards,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: "power2.out" }
+      );
+    }
+  }, [loading, rides.length]);
+
   return (
     <div className="min-h-screen bg-primary text-accent">
       <div className="max-w-7xl mx-auto p-4">
-        <h1 className="text-3xl font-bold text-secondary mb-6">Your Ride History</h1>
+        <AnimatedWrapper delay={0.1}>
+          <h1 className="text-3xl font-bold text-white mb-2">Your <span className="text-secondary">Ride History</span></h1>
+          <p className="text-gray-400 mb-6">View and manage your past and upcoming rides</p>
+        </AnimatedWrapper>
 
         {/* Filter buttons */}
-        <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
+        <AnimatedWrapper delay={0.2}>
+          <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
           <button
             onClick={() => setFilter("all")}
             className={`px-4 py-2 rounded-full ${
@@ -186,20 +206,37 @@ const UserRideHistory = () => {
           >
             Cancelled
           </button>
-        </div>
+          </div>
+        </AnimatedWrapper>
 
         {loading ? (
-          <div className="text-center py-8">
-            <p>Loading ride history...</p>
+          <div className="text-center py-12 bg-gradient-to-br from-gray-900 to-black rounded-xl border border-gray-700 shadow-lg">
+            <svg className="animate-spin h-12 w-12 text-secondary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-gray-300 text-lg">Loading ride history...</p>
           </div>
         ) : rides.length === 0 ? (
-          <div className="bg-dark-primary rounded-xl p-8 text-center">
-            <p className="text-gray-400">No rides found</p>
+          <div className="bg-gradient-to-br from-gray-900 to-black rounded-xl p-12 text-center border border-gray-700 shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <p className="text-gray-400 mb-4">No rides found for the selected filter</p>
+            <button
+              onClick={() => setFilter("all")}
+              className="bg-secondary text-white px-6 py-3 rounded-lg font-medium hover:bg-pink-700 transition duration-200 inline-flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Show All Rides
+            </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div ref={ridesRef} className="space-y-4">
             {rides.map((ride) => (
-              <div key={ride.id} className="bg-dark-primary rounded-xl shadow-md overflow-hidden">
+              <div key={ride.id} className="ride-card bg-gradient-to-br from-gray-900 to-black rounded-xl shadow-lg overflow-hidden border border-gray-700 transition-all duration-300 hover:shadow-xl hover:border-gray-600">
                 <div className="p-4 border-l-4 border-secondary">
                   {/* Header with status and fare */}
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center">
@@ -222,8 +259,8 @@ const UserRideHistory = () => {
                     </div>
 
                     <div className="mt-2 md:mt-0 text-right">
-                      <p className="text-xl font-semibold text-green-500 bg-white px-2 py-1 rounded-md mb-1">₹{ride.fare?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                      <p className="text-xs text-gray-700 bg-white px-2 py-1 rounded-md">₹{Math.round(ride.fare / ride.distance).toLocaleString('en-IN')}/km</p>
+                      <p className="text-xl font-semibold text-white bg-secondary px-2 py-1 rounded-md mb-1">₹{ride.fare?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                      <p className="text-xs text-white bg-gray-700 px-2 py-1 rounded-md">₹{Math.round(ride.fare / ride.distance).toLocaleString('en-IN')}/km</p>
                     </div>
                   </div>
 
@@ -273,20 +310,20 @@ const UserRideHistory = () => {
 
                   {/* Ride details */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <div className="bg-white px-3 py-2 rounded-lg">
-                      <p className="text-xs text-gray-500">Distance</p>
-                      <p className="text-sm font-medium text-gray-700">{ride.distance} km</p>
+                    <div className="bg-gray-700 px-3 py-2 rounded-lg">
+                      <p className="text-xs text-gray-300">Distance</p>
+                      <p className="text-sm font-medium text-white">{ride.distance} km</p>
                     </div>
 
-                    <div className="bg-white px-3 py-2 rounded-lg">
-                      <p className="text-xs text-gray-500">Est. Time</p>
-                      <p className="text-sm font-medium text-gray-700">{ride.estimatedTime || Math.ceil(ride.distance * 3)} mins</p>
+                    <div className="bg-gray-700 px-3 py-2 rounded-lg">
+                      <p className="text-xs text-gray-300">Est. Time</p>
+                      <p className="text-sm font-medium text-white">{ride.estimatedTime || Math.ceil(ride.distance * 3)} mins</p>
                     </div>
 
                     {ride.startedAt && ride.completedAt && (
-                      <div className="bg-white px-3 py-2 rounded-lg">
-                        <p className="text-xs text-gray-500">Actual Time</p>
-                        <p className="text-sm font-medium text-gray-700">{calculateDuration(ride.startedAt, ride.completedAt)}</p>
+                      <div className="bg-gray-700 px-3 py-2 rounded-lg">
+                        <p className="text-xs text-gray-300">Actual Time</p>
+                        <p className="text-sm font-medium text-white">{calculateDuration(ride.startedAt, ride.completedAt)}</p>
                       </div>
                     )}
                   </div>
@@ -297,8 +334,11 @@ const UserRideHistory = () => {
                     {ride.status === "completed" && ride.captainId && !ride.captainRating && (
                       <button
                         onClick={() => setSelectedRide(ride)}
-                        className="w-full bg-secondary text-white py-2 rounded-lg hover:bg-pink-700 transition duration-200"
+                        className="w-full bg-secondary text-white py-3 rounded-lg hover:bg-pink-700 transition duration-300 flex items-center justify-center transform hover:-translate-y-1 shadow-md hover:shadow-lg"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
                         Rate Captain
                       </button>
                     )}
@@ -307,8 +347,11 @@ const UserRideHistory = () => {
                     {ride.status === "completed" && ride.captainId && (
                       <button
                         onClick={() => setPaymentRide(ride)}
-                        className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200"
+                        className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-300 flex items-center justify-center transform hover:-translate-y-1 shadow-md hover:shadow-lg"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
                         Pay with UPI
                       </button>
                     )}

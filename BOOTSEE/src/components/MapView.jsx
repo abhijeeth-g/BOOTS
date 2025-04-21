@@ -485,13 +485,24 @@ const MapView = () => {
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Panel - Location Inputs */}
-        <AnimatedWrapper delay={0.2} className="md:col-span-1 bg-dark-primary p-4 rounded-xl shadow-md border border-gray-700">
-          <h2 className="text-xl font-bold text-secondary mb-4 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <AnimatedWrapper delay={0.2} className="md:col-span-1 bg-gradient-to-br from-gray-900 to-black p-5 rounded-xl shadow-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             Book Your Ride
           </h2>
+
+          <div className="bg-black bg-opacity-50 p-4 rounded-lg mb-4 border border-gray-700">
+            <p className="text-white text-sm mb-2">How to book a ride:</p>
+            <ol className="text-gray-300 text-sm list-decimal pl-5 space-y-1">
+              <li>Enter your pickup location</li>
+              <li>Enter your destination</li>
+              <li>Select a captain from the list</li>
+              <li>Choose your payment method</li>
+              <li>Confirm your ride</li>
+            </ol>
+          </div>
 
           <LocationSearch
             label="Pickup Location"
@@ -686,9 +697,47 @@ const MapView = () => {
         </AnimatedWrapper>
 
         {/* Right Panel - Map */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 relative">
+          {/* Map Instructions */}
+          {pickup && !drop && (
+            <div className="absolute top-4 right-4 z-10 bg-black bg-opacity-80 text-white p-3 rounded-lg shadow-lg border border-secondary max-w-xs">
+              <div className="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm">Now select your <span className="text-secondary font-medium">destination</span> to see available routes and fare estimates</p>
+              </div>
+            </div>
+          )}
+
+          {!pickup && (
+            <div className="absolute top-4 right-4 z-10 bg-black bg-opacity-80 text-white p-3 rounded-lg shadow-lg border border-secondary max-w-xs">
+              <div className="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm">Start by selecting your <span className="text-secondary font-medium">pickup location</span> using the search box</p>
+              </div>
+            </div>
+          )}
           {pickup ? (
-            <div className="h-[70vh] rounded-xl overflow-hidden shadow-lg">
+            <div className="h-[70vh] rounded-xl overflow-hidden shadow-lg border border-gray-700 relative">
+              {/* Map Legend */}
+              <div className="absolute bottom-4 left-4 z-10 bg-black bg-opacity-80 p-3 rounded-lg shadow-lg border border-gray-700">
+                <div className="text-xs text-white mb-2 font-medium">Map Legend:</div>
+                <div className="flex items-center mb-1">
+                  <div className="w-3 h-3 rounded-full bg-secondary mr-2 border border-white"></div>
+                  <span className="text-xs text-white">Your Location</span>
+                </div>
+                <div className="flex items-center mb-1">
+                  <div className="w-3 h-3 rounded-full bg-green-500 mr-2 border border-white"></div>
+                  <span className="text-xs text-white">Destination</span>
+                </div>
+                <div className="flex items-center">
+                  <img src={bikeIconUrl} alt="Captain" className="w-4 h-4 mr-2" />
+                  <span className="text-xs text-white">Available Captains</span>
+                </div>
+              </div>
               <MapContainer
                 center={pickup}
                 zoom={13}

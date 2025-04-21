@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import {
@@ -14,6 +14,14 @@ import {
   getDoc
 } from "firebase/firestore";
 import CaptainMap from "../../components/captain/CaptainMap";
+import CaptainDashboardBackground from "../../components/CaptainDashboardBackground";
+import CaptainCard from "../../components/CaptainCard";
+import CaptainStatCard from "../../components/CaptainStatCard";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+// Register ScrollTrigger
+gsap.registerPlugin(ScrollTrigger);
 
 const CaptainDashboard = () => {
   const { user } = useAuth();
@@ -23,6 +31,64 @@ const CaptainDashboard = () => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [captainData, setCaptainData] = useState(null);
+
+  // Refs for animations
+  const headerRef = useRef(null);
+  const statusButtonRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const statsRef = useRef(null);
+
+  // GSAP animations
+  useEffect(() => {
+    // Header animation
+    gsap.from(headerRef.current, {
+      y: -30,
+      opacity: 0,
+      duration: 0.8,
+      ease: "power3.out"
+    });
+
+    // Status button animation
+    gsap.from(statusButtonRef.current, {
+      scale: 0,
+      rotation: 180,
+      opacity: 0,
+      duration: 1,
+      delay: 0.3,
+      ease: "elastic.out(1, 0.3)"
+    });
+
+    // Map container animation
+    gsap.from(mapContainerRef.current, {
+      y: 50,
+      opacity: 0,
+      duration: 1,
+      delay: 0.2,
+      ease: "power3.out"
+    });
+
+    // Stats animation
+    if (statsRef.current) {
+      ScrollTrigger.create({
+        trigger: statsRef.current,
+        start: "top 80%",
+        onEnter: () => {
+          gsap.from(statsRef.current.querySelectorAll('.stat-item'), {
+            y: 30,
+            opacity: 0,
+            stagger: 0.1,
+            duration: 0.6,
+            ease: "back.out(1.7)"
+          });
+        }
+      });
+    }
+
+    // Cleanup
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    };
+  }, []);
 
   // Fetch captain data
   useEffect(() => {
@@ -224,33 +290,44 @@ const CaptainDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary text-accent">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white relative">
+      {/* 3D Animated Background */}
+      <CaptainDashboardBackground />
+
       {/* Status Toggle */}
-      <div className="bg-dark-primary p-4 shadow-md">
+      <div ref={headerRef} className="bg-black bg-opacity-70 backdrop-blur-md p-4 shadow-md border-b border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-secondary">Captain Dashboard</h1>
-            <p className="text-gray-400">
+            <h1 className="text-2xl font-bold">
+              <span className="text-secondary">SAFE</span>
+              <span className="text-white">WINGS</span>
+              <span className="ml-2 text-white">Captain</span>
+            </h1>
+            <p className="text-gray-300">
               {isOnline ? "You are online and receiving ride requests" : "You are offline"}
             </p>
           </div>
           <button
+            ref={statusButtonRef}
             onClick={toggleOnlineStatus}
-            className={`px-6 py-2 rounded-full font-medium ${
+            className={`px-6 py-3 rounded-full font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg ${
               isOnline
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-gray-600 hover:bg-gray-700"
-            } transition duration-200`}
+                ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                : "bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800"
+            }`}
           >
-            {isOnline ? "Go Offline" : "Go Online"}
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-2 ${isOnline ? 'bg-green-300' : 'bg-gray-400'}`}></div>
+              {isOnline ? "Go Offline" : "Go Online"}
+            </div>
           </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
         {/* Map Section */}
-        <div className="lg:col-span-2">
-          <div className="bg-dark-primary rounded-xl shadow-md overflow-hidden h-[500px]">
+        <div className="lg:col-span-2" ref={mapContainerRef}>
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden h-[500px] border border-gray-800">
             <CaptainMap
               currentLocation={currentLocation}
               activeRide={activeRide}
@@ -262,7 +339,14 @@ const CaptainDashboard = () => {
         <div className="space-y-6">
           {/* Active Ride Card */}
           {activeRide && (
-            <div className="bg-dark-primary rounded-xl shadow-md p-4 border-l-4 border-secondary">
+            <CaptainCard
+              title="Active Ride"
+              icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>}
+              delay={0.2}
+              className="border-l-4 border-secondary"
+            >
               <h2 className="text-xl font-semibold text-secondary mb-2">Active Ride</h2>
               <div className="space-y-3">
                 {/* User info */}
@@ -349,13 +433,20 @@ const CaptainDashboard = () => {
                   </button>
                 )}
               </div>
-            </div>
+            </CaptainCard>
           )}
 
           {/* Ride Requests List */}
           {isOnline && !activeRide && (
-            <div className="bg-dark-primary rounded-xl shadow-md p-4">
-              <h2 className="text-xl font-semibold text-secondary mb-4">Ride Requests</h2>
+            <CaptainCard
+              title="Ride Requests"
+              icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>}
+              delay={0.3}
+              maxHeight="400px"
+              scrollable={true}
+            >
               {loading ? (
                 <p className="text-center text-gray-400 py-4">Loading ride requests...</p>
               ) : rideRequests.length > 0 ? (
@@ -433,63 +524,67 @@ const CaptainDashboard = () => {
               ) : (
                 <p className="text-center text-gray-400 py-4">No ride requests available</p>
               )}
-            </div>
+            </CaptainCard>
           )}
 
           {/* Captain Stats */}
-          <div className="bg-dark-primary rounded-xl shadow-md p-4">
-            <h2 className="text-xl font-semibold text-secondary mb-4">Your Stats</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black bg-opacity-30 p-4 rounded-lg">
-                <p className="text-gray-400 text-sm mb-1">Rating</p>
-                <div className="flex items-center">
-                  <span className="text-xl font-semibold mr-2">
-                    {captainData?.rating?.toFixed(1) || "N/A"}
-                  </span>
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={`text-lg ${star <= Math.round(captainData?.rating || 0) ? 'text-yellow-400' : 'text-gray-600'}`}
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </div>
+          <div ref={statsRef} className="space-y-4">
+            <CaptainCard
+              title="Your Stats"
+              icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>}
+              delay={0.4}
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="stat-item">
+                  <CaptainStatCard
+                    title="Rating"
+                    value={captainData?.rating?.toFixed(1) || "N/A"}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>}
+                    color="yellow"
+                    delay={0.1}
+                  />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {captainData?.totalRatings || 0} {captainData?.totalRatings === 1 ? 'rating' : 'ratings'}
-                </p>
+                <div className="stat-item">
+                  <CaptainStatCard
+                    title="Total Rides"
+                    value={captainData?.totalRides?.toLocaleString() || 0}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>}
+                    color="blue"
+                    delay={0.2}
+                  />
+                </div>
+                <div className="stat-item">
+                  <CaptainStatCard
+                    title="Today's Earnings"
+                    value={`₹${(captainData?.todayEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>}
+                    color="green"
+                    trend="up"
+                    trendValue="+12%"
+                    delay={0.3}
+                  />
+                </div>
+                <div className="stat-item">
+                  <CaptainStatCard
+                    title="Total Earnings"
+                    value={`₹${(captainData?.totalEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>}
+                    color="secondary"
+                    delay={0.4}
+                  />
+                </div>
               </div>
-              <div className="bg-black bg-opacity-30 p-4 rounded-lg">
-                <p className="text-gray-400 text-sm mb-1">Total Rides</p>
-                <p className="text-xl font-semibold">
-                  {captainData?.totalRides?.toLocaleString() || 0}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {captainData?.completedRides || 0} completed
-                </p>
-              </div>
-              <div className="bg-black bg-opacity-30 p-4 rounded-lg">
-                <p className="text-gray-400 text-sm mb-1">Today's Earnings</p>
-                <p className="text-xl font-semibold text-green-500">
-                  ₹{(captainData?.todayEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {captainData?.todayRides || 0} rides today
-                </p>
-              </div>
-              <div className="bg-black bg-opacity-30 p-4 rounded-lg">
-                <p className="text-gray-400 text-sm mb-1">Total Earnings</p>
-                <p className="text-xl font-semibold text-green-500">
-                  ₹{(captainData?.totalEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Since {captainData?.createdAt?.toDate().toLocaleDateString() || 'joining'}
-                </p>
-              </div>
-
-            </div>
+            </CaptainCard>
           </div>
         </div>
       </div>

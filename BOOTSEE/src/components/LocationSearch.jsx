@@ -97,7 +97,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
 
   return (
     <div className="mb-4" ref={searchBoxRef}>
-      <label className="block text-sm font-medium text-accent mb-1">{label}</label>
+      <label className="block text-sm font-medium text-white mb-2">{label}</label>
       <div className="relative">
         <div className="flex">
           <div className="relative flex-grow">
@@ -106,7 +106,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
               onChange={handleInputChange}
               onFocus={() => setIsFocused(true)}
               placeholder={placeholder || "Search for a location..."}
-              className="w-full px-4 py-3 bg-dark-primary border border-gray-700 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-secondary text-accent pr-10"
+              className="w-full px-4 py-3 bg-black bg-opacity-50 border border-gray-700 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-secondary text-white pr-10"
             />
             {query && (
               <button
@@ -131,7 +131,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
 
         {/* Search Results Dropdown */}
         {isFocused && (results.length > 0 || isLoading || error) && (
-          <div className="absolute z-10 w-full mt-1 bg-dark-primary border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-black bg-opacity-90 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {isLoading && (
               <div className="p-3 text-center text-gray-400">
                 <svg className="animate-spin h-5 w-5 mx-auto mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -150,7 +150,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
                   <li
                     key={idx}
                     onClick={() => handleSelect(place)}
-                    className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-sm"
+                    className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-sm text-white"
                   >
                     <div className="flex items-start">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -194,7 +194,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
             setError("Geolocation is not supported by your browser.");
           }
         }}
-        className="mt-2 text-secondary text-sm flex items-center hover:underline"
+        className="mt-2 text-secondary text-sm flex items-center hover:underline hover:text-white transition-colors duration-200"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
