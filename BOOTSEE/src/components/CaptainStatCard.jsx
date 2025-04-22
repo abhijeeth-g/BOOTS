@@ -4,10 +4,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const CaptainStatCard = ({ 
-  title, 
-  value, 
-  icon, 
+const CaptainStatCard = ({
+  title,
+  value,
+  icon,
   color = 'secondary',
   trend = null, // 'up', 'down', or null
   trendValue = null,
@@ -18,7 +18,7 @@ const CaptainStatCard = ({
   const valueRef = useRef(null);
   const iconRef = useRef(null);
   const trendRef = useRef(null);
-  
+
   // Define color classes
   const colorClasses = {
     secondary: 'text-secondary',
@@ -28,7 +28,7 @@ const CaptainStatCard = ({
     red: 'text-red-500',
     purple: 'text-purple-500'
   };
-  
+
   const bgColorClasses = {
     secondary: 'bg-secondary bg-opacity-10',
     green: 'bg-green-500 bg-opacity-10',
@@ -37,7 +37,7 @@ const CaptainStatCard = ({
     red: 'bg-red-500 bg-opacity-10',
     purple: 'bg-purple-500 bg-opacity-10'
   };
-  
+
   const borderColorClasses = {
     secondary: 'border-secondary',
     green: 'border-green-500',
@@ -46,70 +46,89 @@ const CaptainStatCard = ({
     red: 'border-red-500',
     purple: 'border-purple-500'
   };
-  
+
   useEffect(() => {
     const card = cardRef.current;
     const valueElement = valueRef.current;
     const iconElement = iconRef.current;
     const trendElement = trendRef.current;
-    
+
     if (!card || !valueElement) return;
-    
-    // Create a timeline for the animations
+
+    // CRITICAL: Make sure all elements are visible by default
+    // This ensures elements don't disappear if animations fail
+    gsap.set(card, { opacity: 1, y: 0 });
+    gsap.set(valueElement, { opacity: 1 });
+    if (iconElement) gsap.set(iconElement, { opacity: 1, scale: 1, rotation: 0 });
+    if (trendElement) gsap.set(trendElement, { opacity: 1, y: 0 });
+
+    // Store animations for cleanup
+    const animations = [];
+
+    // Create a timeline with minimal animations
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: card,
-        start: "top 80%",
+        start: "top 90%",
         toggleActions: "play none none none"
       }
     });
-    
-    // Card animation
-    tl.from(card, {
-      y: 30,
-      opacity: 0,
-      duration: 0.6,
-      delay: delay,
-      ease: "power3.out"
-    });
-    
-    // Value animation - count up effect
-    const startValue = 0;
-    const endValue = parseFloat(value) || 0;
-    
-    tl.from(valueElement, {
-      textContent: startValue,
-      duration: 1.5,
-      ease: "power2.out",
-      snap: { textContent: 1 },
-      onUpdate: function() {
-        if (typeof endValue === 'number') {
-          valueElement.textContent = Math.round(this.targets()[0].textContent);
-        }
+
+    // Card animation - very subtle
+    tl.fromTo(card,
+      { y: 10, opacity: 0.9 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.4,
+        delay: delay,
+        ease: "power2.out"
       }
-    }, "-=0.3");
-    
-    // Icon animation
+    );
+
+    // Value animation - simplified
+    // Just do a simple fade in instead of count up to avoid issues
+    tl.fromTo(valueElement,
+      { opacity: 0.9 },
+      {
+        opacity: 1,
+        duration: 0.3,
+        ease: "power2.out"
+      },
+      "-=0.2"
+    );
+
+    // Store the animation for cleanup
+    animations.push(tl);
+
+    // Icon animation - very subtle
     if (iconElement) {
-      tl.from(iconElement, {
-        scale: 0,
-        rotation: 180,
-        opacity: 0,
-        duration: 0.8,
-        ease: "elastic.out(1, 0.3)"
-      }, "-=1.2");
+      tl.fromTo(iconElement,
+        { scale: 0.95, opacity: 0.9 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.3,
+          ease: "power2.out"
+        },
+        "-=0.2"
+      );
     }
-    
-    // Trend animation
+
+    // Trend animation - very subtle
     if (trendElement) {
-      tl.from(trendElement, {
-        y: trend === 'up' ? 20 : -20,
-        opacity: 0,
-        duration: 0.6,
-        ease: "back.out(1.7)"
-      }, "-=0.8");
+      tl.fromTo(trendElement,
+        { y: trend === 'up' ? 5 : -5, opacity: 0.9 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.3,
+          ease: "power2.out"
+        },
+        "-=0.2"
+      );
     }
-    
+
     // Hover animation
     card.addEventListener('mouseenter', () => {
       gsap.to(card, {
@@ -118,7 +137,7 @@ const CaptainStatCard = ({
         duration: 0.3,
         ease: "power2.out"
       });
-      
+
       if (iconElement) {
         gsap.to(iconElement, {
           rotation: '+=30',
@@ -128,7 +147,7 @@ const CaptainStatCard = ({
         });
       }
     });
-    
+
     card.addEventListener('mouseleave', () => {
       gsap.to(card, {
         y: 0,
@@ -136,7 +155,7 @@ const CaptainStatCard = ({
         duration: 0.3,
         ease: "power2.out"
       });
-      
+
       if (iconElement) {
         gsap.to(iconElement, {
           rotation: '-=30',
@@ -146,22 +165,45 @@ const CaptainStatCard = ({
         });
       }
     });
-    
+
     // Cleanup
     return () => {
       card.removeEventListener('mouseenter', () => {});
       card.removeEventListener('mouseleave', () => {});
-      
-      if (card.scrollTrigger) {
-        card.scrollTrigger.kill();
-      }
+
+      // Kill all animations
+      animations.forEach(anim => {
+        if (anim && anim.kill) anim.kill();
+      });
+
+      // Kill all ScrollTriggers associated with this component
+      ScrollTrigger.getAll().forEach(trigger => {
+        if (trigger && trigger.vars && trigger.vars.trigger === card) {
+          trigger.kill();
+        }
+      });
     };
   }, [delay, value, trend]);
-  
+
+  // Create a class string with the appropriate hover border color
+  const getCardClassName = () => {
+    const baseClasses = "bg-black bg-opacity-50 backdrop-blur-sm rounded-xl p-5 border border-gray-700 transition-all duration-300";
+    const hoverClasses = {
+      secondary: "hover:border-secondary",
+      green: "hover:border-green-500",
+      blue: "hover:border-blue-500",
+      yellow: "hover:border-yellow-500",
+      red: "hover:border-red-500",
+      purple: "hover:border-purple-500"
+    };
+
+    return `${baseClasses} ${hoverClasses[color]} ${className}`;
+  };
+
   return (
-    <div 
+    <div
       ref={cardRef}
-      className={`bg-black bg-opacity-50 backdrop-blur-sm rounded-xl p-5 border border-gray-700 hover:${borderColorClasses[color]} transition-all duration-300 ${className}`}
+      className={getCardClassName()}
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-400">{title}</h3>
@@ -171,14 +213,14 @@ const CaptainStatCard = ({
           </div>
         )}
       </div>
-      
+
       <div className="flex items-end">
         <div ref={valueRef} className={`text-3xl font-bold ${colorClasses[color]}`}>
           {value}
         </div>
-        
+
         {trend && (
-          <div 
+          <div
             ref={trendRef}
             className={`ml-2 mb-1 flex items-center ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}
           >

@@ -6,7 +6,7 @@ const RatingStars = ({ initialRating = 0, totalRatings = 0, onRatingChange, read
 
   const handleClick = (newRating) => {
     if (readOnly) return;
-    
+
     setRating(newRating);
     if (onRatingChange) {
       onRatingChange(newRating);
@@ -37,7 +37,7 @@ const RatingStars = ({ initialRating = 0, totalRatings = 0, onRatingChange, read
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}
-            className={`${starSizeClass} cursor-${readOnly ? "default" : "pointer"} ${
+            className={`${starSizeClass} ${readOnly ? "cursor-default" : "cursor-pointer"} ${
               (hoverRating || rating) >= star
                 ? "text-yellow-400"
                 : "text-gray-400"

@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, ZoomControl, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
+import "../styles/MapStyles.css"; // Import shared map styles
 import LocationSearch from "./LocationSearch";
 import PaymentOptions from "./PaymentOptions";
 import AnimatedWrapper from "./AnimatedWrapper";
@@ -13,8 +14,11 @@ import { useAuth } from "../context/AuthContext";
 import { gsap } from "gsap";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-// Use default icon URL if the local asset isn't available
+
+// Use better icon URLs with fallbacks
 const bikeIconUrl = "https://cdn-icons-png.flaticon.com/512/2972/2972185.png";
+const userIconUrl = "https://cdn-icons-png.flaticon.com/512/1077/1077063.png";
+const destinationIconUrl = "https://cdn-icons-png.flaticon.com/512/1180/1180058.png";
 
 // Create a function to generate colored dot icons
 const createColoredDotIcon = (color, size = 12) => {
@@ -43,24 +47,127 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// Map center component
-const MapCenter = ({ position }) => {
+// Enhanced Map center component
+const MapCenter = ({
+  position,
+  zoom = null,
+  animate = true,
+  animationDuration = 1.0,
+  minDistanceChange = 0.0001, // Minimum distance change to trigger recenter (about 10 meters)
+  followMode = false // If true, will always recenter on position changes
+}) => {
   const map = useMap();
+  const positionRef = useRef(position);
+  const followModeRef = useRef(followMode);
 
+  // Update follow mode ref when prop changes
   useEffect(() => {
-    if (position) {
-      map.setView(position, map.getZoom());
+    followModeRef.current = followMode;
+  }, [followMode]);
+
+  // Calculate distance between two points
+  const calculateDistance = useCallback((pos1, pos2) => {
+    if (!pos1 || !pos2) return Infinity;
+    return Math.sqrt(
+      Math.pow(pos1[0] - pos2[0], 2) +
+      Math.pow(pos1[1] - pos2[1], 2)
+    );
+  }, []);
+
+  // Handle map centering
+  useEffect(() => {
+    // Skip if no position
+    if (!position) return;
+
+    // Calculate distance from current center
+    const distance = calculateDistance(position, positionRef.current);
+
+    // Only recenter if in follow mode or position has changed significantly
+    if (followModeRef.current || !positionRef.current || distance > minDistanceChange) {
+      // Update position reference
+      positionRef.current = position;
+
+      // Get current or specified zoom level
+      const zoomLevel = zoom !== null ? zoom : map.getZoom();
+
+      try {
+        if (animate) {
+          // Use flyTo for smoother animation
+          map.flyTo(position, zoomLevel, {
+            duration: animationDuration,
+            easeLinearity: 0.5
+          });
+        } else {
+          // Instant update
+          map.setView(position, zoomLevel);
+        }
+      } catch (error) {
+        console.error("Error recentering map:", error);
+        // Fallback to setView if flyTo fails
+        map.setView(position, zoomLevel);
+      }
     }
-  }, [position, map]);
+  }, [position, map, zoom, animate, animationDuration, minDistanceChange, calculateDistance]);
+
+  // Add map event listeners to detect user interaction
+  useEffect(() => {
+    // When user drags the map, disable follow mode
+    const handleDragStart = () => {
+      followModeRef.current = false;
+    };
+
+    // Add event listeners
+    map.on('dragstart', handleDragStart);
+
+    // Cleanup
+    return () => {
+      map.off('dragstart', handleDragStart);
+    };
+  }, [map]);
 
   return null;
 };
 
-const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
+// Enhanced Routing Machine component
+const RoutingMachine = ({
+  from,
+  to,
+  onDistanceCalculated,
+  routeType = "default", // pickup, dropoff, default
+  fitBounds = true,
+  animateFit = true
+}) => {
   const map = useMap();
+  const routingControlRef = useRef(null);
+  const routeLineRef = useRef(null);
+  const tooltipRef = useRef(null);
+
+  // Get route color based on type
+  const getRouteColors = useCallback(() => {
+    switch(routeType) {
+      case "pickup":
+        return {
+          primary: "#4F46E5", // Indigo
+          secondary: "#818CF8"
+        };
+      case "dropoff":
+        return {
+          primary: "#10B981", // Emerald
+          secondary: "#34D399"
+        };
+      default:
+        return {
+          primary: "#FF1493", // Pink
+          secondary: "#FF69B4"
+        };
+    }
+  }, [routeType]);
 
   useEffect(() => {
     if (!from || !to || !map) return;
+
+    // Get route colors
+    const { primary, secondary } = getRouteColors();
 
     // Calculate direct distance using Haversine formula
     const calculateDirectDistance = (lat1, lon1, lat2, lon2) => {
@@ -87,14 +194,52 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
     // Call the distance callback immediately with the estimated distance and time
     onDistanceCalculated(estimatedRoadDistance, estimatedTime);
 
+    // Clean up any existing routes
+    if (routingControlRef.current) {
+      try {
+        map.removeControl(routingControlRef.current);
+      } catch (e) {
+        console.error("Error removing routing control:", e);
+      }
+    }
+
+    if (routeLineRef.current) {
+      try {
+        map.removeLayer(routeLineRef.current);
+      } catch (e) {
+        console.error("Error removing route line:", e);
+      }
+    }
+
+    if (tooltipRef.current) {
+      try {
+        map.removeLayer(tooltipRef.current);
+      } catch (e) {
+        console.error("Error removing tooltip:", e);
+      }
+    }
+
     // Create a polyline for direct path (fallback)
-    const directPath = L.polyline([from, to], {
-      color: '#FF1493',
-      weight: 4,
-      opacity: 0.7,
+    const mainLine = L.polyline([from, to], {
+      color: primary,
+      weight: 5,
+      opacity: 0.8,
       dashArray: '10, 10',
-      lineJoin: 'round'
+      lineJoin: 'round',
+      className: 'route-line'
     }).addTo(map);
+
+    // Add glow effect
+    const glowLine = L.polyline([from, to], {
+      color: secondary,
+      weight: 9,
+      opacity: 0.3,
+      lineJoin: 'round',
+      lineCap: 'round'
+    }).addTo(map);
+
+    // Store both lines for cleanup
+    routeLineRef.current = L.layerGroup([glowLine, mainLine]).addTo(map);
 
     // Add distance markers along the path
     const midPoint = [
@@ -112,12 +257,29 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
     .setContent(`<div class="route-info"><strong>${estimatedRoadDistance.toFixed(1)} km</strong> · ${estimatedTime} mins</div>`)
     .addTo(map);
 
+    // Store tooltip for cleanup
+    tooltipRef.current = tooltip;
+
     // Try to use Leaflet Routing Machine for actual road routing
     try {
       // Set a timeout for the routing request
       let routingTimeout = setTimeout(() => {
         console.log("Routing request timed out, using direct path instead");
         // We'll keep the direct path visible since the routing request timed out
+
+        // If requested, fit bounds to show the route
+        if (fitBounds) {
+          if (animateFit) {
+            map.flyToBounds([from, to], {
+              padding: [50, 50],
+              duration: 1.5
+            });
+          } else {
+            map.fitBounds([from, to], {
+              padding: [50, 50]
+            });
+          }
+        }
       }, 5000); // 5 second timeout
 
       const routingControl = L.Routing.control({
@@ -134,16 +296,19 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
         }),
         createMarker: function() { return null; }, // Don't create default markers
         addWaypoints: false,
-        fitSelectedRoutes: true,
+        fitSelectedRoutes: fitBounds,
         lineOptions: {
           styles: [
-            { color: '#FF1493', opacity: 0.9, weight: 7 }, // Thicker, more visible main route
-            { color: '#FF69B4', opacity: 0.6, weight: 3 }
+            { color: primary, opacity: 0.9, weight: 7, className: 'route-line' }, // Thicker, more visible main route
+            { color: secondary, opacity: 0.6, weight: 3 }
           ],
           extendToWaypoints: true,
           missingRouteTolerance: 0
         }
       }).addTo(map);
+
+      // Store the routing control for cleanup
+      routingControlRef.current = routingControl;
 
       routingControl.on("routesfound", function (e) {
         // Clear the timeout since we got a response
@@ -157,11 +322,14 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
         console.log("Actual route distance:", distanceInKm, "km, time:", timeInMinutes, "mins");
 
         // Update the tooltip with actual route information
-        map.removeLayer(tooltip);
+        if (tooltipRef.current) {
+          map.removeLayer(tooltipRef.current);
+        }
+
         const routeMidPoint = e.routes[0].coordinates[Math.floor(e.routes[0].coordinates.length / 2)];
 
         // Create a new tooltip with updated information
-        L.tooltip({
+        const newTooltip = L.tooltip({
           permanent: true,
           direction: 'center',
           className: 'route-tooltip'
@@ -170,11 +338,17 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
         .setContent(`<div class="route-info"><strong>${distanceInKm.toFixed(1)} km</strong> · ${timeInMinutes} mins</div>`)
         .addTo(map);
 
+        // Update tooltip reference
+        tooltipRef.current = newTooltip;
+
         // Call the callback with actual distance and time
         onDistanceCalculated(distanceInKm, timeInMinutes);
 
         // Remove the direct path once we have the actual route
-        map.removeLayer(directPath);
+        if (routeLineRef.current) {
+          map.removeLayer(routeLineRef.current);
+          routeLineRef.current = null;
+        }
 
         // Add custom markers for turns and instructions
         const route = e.routes[0];
@@ -204,8 +378,22 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
 
         // Update cleanup function to remove turn markers
         routingControl._cleanup = () => {
-          turnMarkers.forEach(marker => map.removeLayer(marker));
+          turnMarkers.forEach(marker => {
+            try {
+              map.removeLayer(marker);
+            } catch (e) {
+              console.error("Error removing turn marker:", e);
+            }
+          });
         };
+
+        // If requested, fit bounds to show the route
+        if (fitBounds && animateFit) {
+          map.flyToBounds([from, to], {
+            padding: [50, 50],
+            duration: 1.5
+          });
+        }
       });
 
       routingControl.on("routingerror", function (e) {
@@ -216,36 +404,100 @@ const RoutingMachine = ({ from, to, onDistanceCalculated }) => {
         // Keep the direct path and tooltip visible if routing fails
         // Use the estimated distance and time we calculated earlier
         console.log("Using estimated distance instead:", estimatedRoadDistance, "km, time:", estimatedTime, "mins");
+
+        // If requested, fit bounds to show the route
+        if (fitBounds) {
+          if (animateFit) {
+            map.flyToBounds([from, to], {
+              padding: [50, 50],
+              duration: 1.5
+            });
+          } else {
+            map.fitBounds([from, to], {
+              padding: [50, 50]
+            });
+          }
+        }
       });
 
       return () => {
         // Clear the timeout if component unmounts
         clearTimeout(routingTimeout);
 
-        if (routingControl._cleanup) {
-          routingControl._cleanup();
+        // Clean up routing control
+        if (routingControlRef.current) {
+          if (routingControlRef.current._cleanup) {
+            try {
+              routingControlRef.current._cleanup();
+            } catch (e) {
+              console.error("Error cleaning up routing control:", e);
+            }
+          }
+
+          try {
+            map.removeControl(routingControlRef.current);
+          } catch (e) {
+            console.error("Error removing routing control:", e);
+          }
         }
-        map.removeControl(routingControl);
-        if (map.hasLayer(directPath)) {
-          map.removeLayer(directPath);
+
+        // Clean up route lines
+        if (routeLineRef.current) {
+          try {
+            map.removeLayer(routeLineRef.current);
+          } catch (e) {
+            console.error("Error removing route line:", e);
+          }
         }
-        if (map.hasLayer(tooltip)) {
-          map.removeLayer(tooltip);
+
+        // Clean up tooltip
+        if (tooltipRef.current) {
+          try {
+            map.removeLayer(tooltipRef.current);
+          } catch (e) {
+            console.error("Error removing tooltip:", e);
+          }
         }
       };
     } catch (error) {
       console.error("Error setting up routing:", error);
       // If routing fails completely, at least we have the direct path and tooltip
-      return () => {
-        if (map.hasLayer(directPath)) {
-          map.removeLayer(directPath);
+
+      // If requested, fit bounds to show the route
+      if (fitBounds) {
+        if (animateFit) {
+          map.flyToBounds([from, to], {
+            padding: [50, 50],
+            duration: 1.5
+          });
+        } else {
+          map.fitBounds([from, to], {
+            padding: [50, 50]
+          });
         }
-        if (map.hasLayer(tooltip)) {
-          map.removeLayer(tooltip);
+      }
+
+      return () => {
+        // Clean up route lines
+        if (routeLineRef.current) {
+          try {
+            map.removeLayer(routeLineRef.current);
+          } catch (e) {
+            console.error("Error removing route line:", e);
+          }
+        }
+
+        // Clean up tooltip
+        if (tooltipRef.current) {
+          try {
+            map.removeLayer(tooltipRef.current);
+          } catch (e) {
+            console.error("Error removing tooltip:", e);
+          }
         }
       };
     }
-  }, [from, to, map, onDistanceCalculated]);
+  }, [from, to, map, onDistanceCalculated, fitBounds, animateFit, getRouteColors]);
 
   // Add CSS for the route tooltip and markers
   useEffect(() => {
@@ -743,14 +995,27 @@ const MapView = () => {
                 zoom={13}
                 style={{ height: "100%", width: "100%" }}
                 ref={mapRef}
+                zoomControl={false}
+                attributionControl={false}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <ZoomControl position="bottomright" />
 
                 {/* User's current location with circle */}
                 {pickup && (
                   <>
-                    <Marker position={pickup} icon={createColoredDotIcon('#FF1493', 16)}>
-                      <Popup>Pickup: {pickupAddress || "Your Location"}</Popup>
+                    <Marker
+                      position={pickup}
+                      icon={createColoredDotIcon('#FF1493', 16)}
+                    >
+                      <Popup>
+                        <div className="font-medium mb-1">
+                          Pickup Location
+                        </div>
+                        <div className="text-sm">
+                          {pickupAddress || "Your Location"}
+                        </div>
+                      </Popup>
                     </Marker>
                     <Circle
                       center={pickup}
@@ -762,8 +1027,18 @@ const MapView = () => {
 
                 {/* Destination marker */}
                 {drop && (
-                  <Marker position={drop} icon={createColoredDotIcon('#4CAF50', 16)}>
-                    <Popup>Destination: {dropAddress || "Drop Location"}</Popup>
+                  <Marker
+                    position={drop}
+                    icon={createColoredDotIcon('#4CAF50', 16)}
+                  >
+                    <Popup>
+                      <div className="font-medium mb-1">
+                        Destination
+                      </div>
+                      <div className="text-sm">
+                        {dropAddress || "Drop Location"}
+                      </div>
+                    </Popup>
                   </Marker>
                 )}
 
@@ -777,9 +1052,9 @@ const MapView = () => {
                     >
                       <Popup>
                         <div>
-                          <strong>{captain.name}</strong><br />
-                          <span>{captain.vehicleModel} ({captain.vehicleNumber})</span><br />
-                          <span>Rating: {captain.rating?.toFixed(1) || "New"} ★</span>
+                          <div className="font-medium mb-1">{captain.name}</div>
+                          <div className="text-sm">{captain.vehicleModel} ({captain.vehicleNumber})</div>
+                          <div className="text-sm mt-1">Rating: {captain.rating?.toFixed(1) || "New"} ★</div>
                         </div>
                       </Popup>
                     </Marker>
@@ -792,11 +1067,18 @@ const MapView = () => {
                     from={pickup}
                     to={drop}
                     onDistanceCalculated={handleDistance}
+                    routeType="default"
+                    fitBounds={true}
+                    animateFit={true}
                   />
                 )}
 
                 {/* Keep map centered on pickup */}
-                <MapCenter position={pickup} />
+                <MapCenter
+                  position={pickup}
+                  animate={true}
+                  followMode={true}
+                />
               </MapContainer>
             </div>
           ) : (

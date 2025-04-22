@@ -30,18 +30,27 @@ const RideStatus = () => {
 
     try {
       // Query for active rides (pending, accepted, in_progress)
+      // Using a simpler query to avoid requiring a composite index
       const q = query(
         collection(db, "rides"),
         where("userId", "==", user.uid),
-        where("status", "in", ["pending", "accepted", "in_progress"]),
-        orderBy("createdAt", "desc")
+        where("status", "in", ["pending", "accepted", "in_progress"])
+        // Removed orderBy to avoid requiring a composite index
+        // We'll sort the results in JavaScript instead
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
+          // Sort the documents by createdAt in descending order
+          const sortedDocs = snapshot.docs.sort((a, b) => {
+            const aDate = a.data().createdAt?.toDate() || new Date(0);
+            const bDate = b.data().createdAt?.toDate() || new Date(0);
+            return bDate - aDate; // Descending order
+          });
+
           const rideData = {
-            id: snapshot.docs[0].id,
-            ...snapshot.docs[0].data()
+            id: sortedDocs[0].id,
+            ...sortedDocs[0].data()
           };
           setActiveRide(rideData);
 
@@ -51,19 +60,28 @@ const RideStatus = () => {
           }
         } else {
           // Check if there's a recently completed ride that needs rating
+          // Simplified query to avoid requiring a composite index
           const completedQuery = query(
             collection(db, "rides"),
             where("userId", "==", user.uid),
             where("status", "==", "completed"),
-            where("userRating", "==", null),
-            orderBy("completedAt", "desc")
+            where("userRating", "==", null)
+            // Removed orderBy to avoid requiring a composite index
+            // We'll sort the results in JavaScript instead
           );
 
           onSnapshot(completedQuery, (completedSnapshot) => {
             if (!completedSnapshot.empty) {
+              // Sort the documents by completedAt in descending order
+              const sortedDocs = completedSnapshot.docs.sort((a, b) => {
+                const aDate = a.data().completedAt?.toDate() || new Date(0);
+                const bDate = b.data().completedAt?.toDate() || new Date(0);
+                return bDate - aDate; // Descending order
+              });
+
               const completedRide = {
-                id: completedSnapshot.docs[0].id,
-                ...completedSnapshot.docs[0].data()
+                id: sortedDocs[0].id,
+                ...sortedDocs[0].data()
               };
               setActiveRide(completedRide);
               setShowRating(true);

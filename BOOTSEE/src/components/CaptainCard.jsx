@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 
-const CaptainCard = ({ 
-  children, 
-  className = "", 
+const CaptainCard = ({
+  children,
+  className = "",
   title,
   icon,
   delay = 0,
@@ -15,55 +15,84 @@ const CaptainCard = ({
   const titleRef = useRef(null);
   const contentRef = useRef(null);
   const iconRef = useRef(null);
-  
+
   useEffect(() => {
     const card = cardRef.current;
     const titleElement = titleRef.current;
     const content = contentRef.current;
     const iconElement = iconRef.current;
-    
+
     if (!card || !titleElement || !content) return;
-    
-    // Initial animation
-    gsap.from(card, {
-      y: 50,
-      opacity: 0,
-      duration: 0.8,
-      delay: delay,
-      ease: "power3.out"
-    });
-    
-    // Title animation
-    gsap.from(titleElement, {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      delay: delay + 0.2,
-      ease: "back.out(1.7)"
-    });
-    
-    // Icon animation
-    if (iconElement) {
-      gsap.from(iconElement, {
-        scale: 0,
-        rotation: 180,
-        opacity: 0,
-        duration: 0.8,
+
+    // Store animations for cleanup
+    const animations = [];
+
+    // CRITICAL: Make sure all elements are visible by default
+    // This ensures elements don't disappear if animations fail
+    gsap.set(card, { opacity: 1, y: 0 });
+    gsap.set(titleElement, { opacity: 1, x: 0 });
+    if (iconElement) gsap.set(iconElement, { opacity: 1, scale: 1, rotation: 0 });
+    gsap.set(content.children, { opacity: 1, y: 0 });
+
+    // Use very subtle animations that won't break the layout
+
+    // Card fade in - subtle slide up
+    const cardAnim = gsap.fromTo(card,
+      { y: 15, opacity: 0.9 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.5,
+        delay: delay,
+        ease: "power2.out"
+      }
+    );
+    animations.push(cardAnim);
+
+    // Title animation - subtle fade in
+    const titleAnim = gsap.fromTo(titleElement,
+      { x: -5, opacity: 0.9 },
+      {
+        x: 0,
+        opacity: 1,
+        duration: 0.4,
         delay: delay + 0.1,
-        ease: "elastic.out(1, 0.3)"
-      });
+        ease: "power2.out"
+      }
+    );
+    animations.push(titleAnim);
+
+    // Icon animation - subtle fade in, no rotation
+    if (iconElement) {
+      const iconAnim = gsap.fromTo(iconElement,
+        { scale: 0.9, opacity: 0.9 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.4,
+          delay: delay + 0.1,
+          ease: "power2.out"
+        }
+      );
+      animations.push(iconAnim);
     }
-    
-    // Content animation
-    gsap.from(content.children, {
-      y: 20,
-      opacity: 0,
-      stagger: 0.1,
-      duration: 0.6,
-      delay: delay + 0.3,
-      ease: "power3.out"
-    });
-    
+
+    // Content animation - subtle fade in
+    if (content.children.length > 0) {
+      const contentAnim = gsap.fromTo(content.children,
+        { y: 5, opacity: 0.9 },
+        {
+          y: 0,
+          opacity: 1,
+          stagger: 0.05,
+          duration: 0.4,
+          delay: delay + 0.2,
+          ease: "power2.out"
+        }
+      );
+      animations.push(contentAnim);
+    }
+
     // Hover animation
     card.addEventListener('mouseenter', () => {
       gsap.to(card, {
@@ -73,7 +102,7 @@ const CaptainCard = ({
         duration: 0.3,
         ease: "power2.out"
       });
-      
+
       if (iconElement) {
         gsap.to(iconElement, {
           rotation: '+=30',
@@ -83,7 +112,7 @@ const CaptainCard = ({
         });
       }
     });
-    
+
     card.addEventListener('mouseleave', () => {
       gsap.to(card, {
         y: 0,
@@ -92,7 +121,7 @@ const CaptainCard = ({
         duration: 0.3,
         ease: "power2.out"
       });
-      
+
       if (iconElement) {
         gsap.to(iconElement, {
           rotation: '-=30',
@@ -102,16 +131,22 @@ const CaptainCard = ({
         });
       }
     });
-    
+
     // Cleanup
     return () => {
+      // Remove event listeners
       card.removeEventListener('mouseenter', () => {});
       card.removeEventListener('mouseleave', () => {});
+
+      // Kill all animations
+      animations.forEach(anim => {
+        if (anim && anim.kill) anim.kill();
+      });
     };
   }, [delay]);
-  
+
   return (
-    <div 
+    <div
       ref={cardRef}
       className={`bg-gradient-to-br from-gray-900 to-black rounded-xl shadow-lg border border-gray-700 overflow-hidden transition-all duration-300 ${className}`}
       onClick={onClick}
@@ -127,8 +162,8 @@ const CaptainCard = ({
           {title}
         </h2>
       </div>
-      <div 
-        ref={contentRef} 
+      <div
+        ref={contentRef}
         className={`p-4 ${scrollable ? 'overflow-y-auto' : ''}`}
         style={maxHeight ? { maxHeight } : {}}
       >

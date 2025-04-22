@@ -46,7 +46,7 @@ const Home = () => {
           ...doc.data()
         }));
 
-        console.log("Recent rides data:", rides);
+        // Set recent rides data
         setRecentRides(rides);
       } catch (error) {
         console.error("Error fetching recent rides:", error);
