@@ -11,14 +11,17 @@ import {
   onSnapshot,
   orderBy,
   serverTimestamp,
-  getDoc
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import CaptainMap from "../../components/captain/CaptainMap";
+import RideStatistics from "../../components/captain/RideStatistics";
 import CaptainDashboardBackground from "../../components/CaptainDashboardBackground";
 import CaptainCard from "../../components/CaptainCard";
 import CaptainStatCard from "../../components/CaptainStatCard";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { toast } from "react-toastify";
 
 // Register ScrollTrigger
 gsap.registerPlugin(ScrollTrigger);
@@ -146,48 +149,147 @@ const CaptainDashboard = () => {
     };
   }, []);
 
-  // Fetch captain data
-  useEffect(() => {
-    const fetchCaptainData = async () => {
-      if (!user) return;
+  // Function to fetch captain data
+  const fetchCaptainData = async () => {
+    if (!user) return;
 
-      try {
-        const captainDoc = await getDoc(doc(db, "captains", user.uid));
-        if (captainDoc.exists()) {
-          setCaptainData(captainDoc.data());
-          setIsOnline(captainDoc.data().isOnline || false);
-        }
-      } catch (error) {
-        console.error("Error fetching captain data:", error);
+    try {
+      const captainDoc = await getDoc(doc(db, "captains", user.uid));
+      if (captainDoc.exists()) {
+        setCaptainData(captainDoc.data());
+        setIsOnline(captainDoc.data().isOnline || false);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching captain data:", error);
+    }
+  };
 
+  // Fetch captain data on component mount or when user changes
+  useEffect(() => {
     fetchCaptainData();
   }, [user]);
 
-  // Get current location
+  // Location accuracy and update state
+  const [locationAccuracy, setLocationAccuracy] = useState(null);
+  const [locationUpdateTime, setLocationUpdateTime] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+  const lastLocationRef = useRef(null);
+  const minLocationChangeThreshold = 10; // meters
+
+  // Get current location with enhanced accuracy
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !user) return;
+
+    // Reset location error when going online
+    setLocationError(null);
+
+    // Calculate distance in meters between two points
+    const getDistanceInMeters = (point1, point2) => {
+      if (!point1 || !point2) return Infinity;
+      // Use our enhanced distance calculation and convert to meters
+      return calculateDistance(point1, point2, false) * 1000;
+    };
+
+    // Enhanced geolocation options
+    const geoOptions = {
+      enableHighAccuracy: true,  // Request the most accurate position available
+      maximumAge: 5000,          // Accept positions that are up to 5 seconds old
+      timeout: 10000             // Wait up to 10 seconds for a position
+    };
+
+    console.log("Starting location tracking with high accuracy");
 
     const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
+      async (position) => {
+        const { latitude, longitude, accuracy, heading, speed } = position.coords;
+        const timestamp = position.timestamp;
         const newLocation = [latitude, longitude];
-        setCurrentLocation(newLocation);
 
-        // Update captain location in Firestore
-        if (user) {
-          updateDoc(doc(db, "captains", user.uid), {
-            currentLocation: newLocation,
-            lastUpdated: serverTimestamp()
-          }).catch(err => console.error("Error updating location:", err));
+        // Update location accuracy
+        setLocationAccuracy(accuracy);
+        setLocationUpdateTime(new Date(timestamp).toLocaleTimeString());
+
+        // Only update location if it's significantly different from the last one
+        // or if this is the first location update
+        if (!lastLocationRef.current ||
+            getDistanceInMeters(lastLocationRef.current, newLocation) > minLocationChangeThreshold) {
+
+          console.log(`Location updated: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ${accuracy.toFixed(1)}m)`);
+          setCurrentLocation(newLocation);
+          lastLocationRef.current = newLocation;
+
+          // Update captain location in Firestore with enhanced data
+          try {
+            // Check if captain document exists first
+            const captainDocRef = doc(db, "captains", user.uid);
+            const captainDocSnap = await getDoc(captainDocRef);
+
+            // Prepare location data with additional information
+            const locationData = {
+              currentLocation: newLocation,
+              locationAccuracy: accuracy,
+              locationTimestamp: timestamp,
+              heading: heading || null,
+              speed: speed || null,
+              lastUpdated: serverTimestamp()
+            };
+
+            if (captainDocSnap.exists()) {
+              // Update existing document
+              await updateDoc(captainDocRef, locationData);
+            } else {
+              // Create new captain document
+              await setDoc(captainDocRef, {
+                ...locationData,
+                isOnline: true,
+                lastStatusChange: serverTimestamp(),
+                name: user.displayName || "Captain",
+                email: user.email || "",
+                phone: "",
+                rating: 4.5,
+                totalRides: 0,
+                todayEarnings: 0,
+                earningsChange: 0,
+                todayRides: 0,
+                ratingChange: 0,
+                createdAt: serverTimestamp()
+              });
+            }
+          } catch (err) {
+            console.error("Error updating location:", err);
+          }
         }
       },
-      (error) => console.error("Error getting location:", error),
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      (error) => {
+        console.error("Error getting location:", error);
+        setLocationError(error.message || "Location error");
+
+        // If high accuracy fails, try again with lower accuracy
+        if (error.code === error.TIMEOUT && geoOptions.enableHighAccuracy) {
+          console.log("High accuracy location timed out, trying with lower accuracy");
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              setCurrentLocation([latitude, longitude]);
+              setLocationAccuracy(position.coords.accuracy);
+              setLocationError("Using lower accuracy location");
+            },
+            (fallbackError) => {
+              console.error("Fallback location also failed:", fallbackError);
+              setLocationError("Location services unavailable. Please check your device settings.");
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          );
+        }
+      },
+      geoOptions
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    // Cleanup function
+    return () => {
+      console.log("Stopping location tracking");
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, [user, isOnline]);
 
   // Toggle online status
@@ -196,13 +298,78 @@ const CaptainDashboard = () => {
 
     try {
       const newStatus = !isOnline;
-      await updateDoc(doc(db, "captains", user.uid), {
-        isOnline: newStatus,
-        lastStatusChange: serverTimestamp()
-      });
-      setIsOnline(newStatus);
+
+      // Check if captain document exists
+      const captainDocRef = doc(db, "captains", user.uid);
+      const captainDocSnap = await getDoc(captainDocRef);
+
+      // If going online, request location permission first
+      if (newStatus) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            const newLocation = [latitude, longitude];
+
+            // Update or create captain document in Firestore
+            if (captainDocSnap.exists()) {
+              // Update existing document
+              await updateDoc(captainDocRef, {
+                isOnline: true,
+                currentLocation: newLocation,
+                lastStatusChange: serverTimestamp()
+              });
+            } else {
+              // Create new captain document
+              await setDoc(captainDocRef, {
+                isOnline: true,
+                currentLocation: newLocation,
+                lastStatusChange: serverTimestamp(),
+                name: user.displayName || "Captain",
+                email: user.email || "",
+                phone: "",
+                rating: 4.5,
+                totalRides: 0,
+                todayEarnings: 0,
+                earningsChange: 0,
+                todayRides: 0,
+                ratingChange: 0,
+                createdAt: serverTimestamp()
+              });
+            }
+
+            setCurrentLocation(newLocation);
+            setIsOnline(true);
+            console.log("Captain is now online with location:", newLocation);
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            alert("Location access is required to go online. Please enable location services and try again.");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        // Going offline is simpler
+        if (captainDocSnap.exists()) {
+          await updateDoc(captainDocRef, {
+            isOnline: false,
+            lastStatusChange: serverTimestamp()
+          });
+        } else {
+          // Create new captain document in offline state
+          await setDoc(captainDocRef, {
+            isOnline: false,
+            lastStatusChange: serverTimestamp(),
+            name: user.displayName || "Captain",
+            email: user.email || "",
+            createdAt: serverTimestamp()
+          });
+        }
+        setIsOnline(false);
+        console.log("Captain is now offline");
+      }
     } catch (error) {
       console.error("Error toggling status:", error);
+      alert("There was an error changing your status. Please try again.");
     }
   };
 
@@ -309,40 +476,187 @@ const CaptainDashboard = () => {
     }
   };
 
-  // Complete ride
+  // Complete ride and update earnings
   const completeRide = async () => {
     if (!activeRide) return;
 
     try {
+      // Get the ride fare
+      const rideFare = activeRide.fare || 0;
+
+      // Get current captain data for earnings update
+      const captainDocRef = doc(db, "captains", user.uid);
+      const captainDocSnap = await getDoc(captainDocRef);
+
+      if (!captainDocSnap.exists()) {
+        throw new Error("Captain document not found");
+      }
+
+      const captainData = captainDocSnap.data();
+
+      // Calculate new earnings values
+      const todayEarnings = (captainData.todayEarnings || 0) + rideFare;
+      const totalEarnings = (captainData.totalEarnings || 0) + rideFare;
+      const totalRides = (captainData.totalRides || 0) + 1;
+      const todayRides = (captainData.todayRides || 0) + 1;
+
+      // Update ride status in Firestore
       await updateDoc(doc(db, "rides", activeRide.id), {
         status: "completed",
-        completedAt: serverTimestamp()
+        completedAt: serverTimestamp(),
+        finalFare: rideFare // Store the final fare in case it was adjusted
       });
+
+      // Update captain data with new earnings and ride count
+      await updateDoc(captainDocRef, {
+        activeRide: null,
+        isAvailable: true,
+        todayEarnings: todayEarnings,
+        totalEarnings: totalEarnings,
+        totalRides: totalRides,
+        todayRides: todayRides,
+        lastCompletedRide: {
+          id: activeRide.id,
+          fare: rideFare,
+          completedAt: serverTimestamp(),
+          from: activeRide.pickupAddress,
+          to: activeRide.dropAddress,
+          distance: activeRide.distance
+        }
+      });
+
+      // Clear active ride from state
+      setActiveRide(null);
+
+      // Show success message with earnings
+      toast.success(`Ride completed! Earned ₹${rideFare.toLocaleString('en-IN')}`);
+
+      // Refresh captain data to show updated earnings
+      fetchCaptainData();
+
+      // Animate earnings update
+      const earningsElement = document.querySelector('.earnings-value');
+      if (earningsElement) {
+        // Flash animation for earnings
+        gsap.fromTo(earningsElement,
+          { backgroundColor: 'rgba(16, 185, 129, 0.3)' }, // Green flash
+          {
+            backgroundColor: 'transparent',
+            duration: 1.5,
+            ease: 'power2.out'
+          }
+        );
+
+        // Bounce animation for the value
+        gsap.fromTo(earningsElement,
+          { scale: 1 },
+          {
+            scale: 1.1,
+            duration: 0.3,
+            yoyo: true,
+            repeat: 1,
+            ease: 'power2.out'
+          }
+        );
+      }
     } catch (error) {
       console.error("Error completing ride:", error);
+      toast.error("Failed to complete ride. Please try again.");
     }
   };
 
-  // Calculate distance between two points
-  const calculateDistance = (point1, point2) => {
-    if (!point1 || !point2) return null;
+  // Cache for distance calculations to improve performance
+  const distanceCache = useRef(new Map());
 
-    // Haversine formula to calculate distance between two points
+  // Distance unit state (km or miles)
+  const [distanceUnit, setDistanceUnit] = useState("km");
+
+  // Distance conversion utilities
+  const convertDistance = (distance, unit = distanceUnit) => {
+    if (distance === null || distance === undefined) return null;
+
+    // Convert to number if it's a string
+    const numDistance = typeof distance === 'string' ? parseFloat(distance) : distance;
+
+    if (isNaN(numDistance)) return null;
+
+    // Convert based on unit
+    if (unit === "miles") {
+      return (numDistance * 0.621371).toFixed(2); // km to miles
+    }
+    return numDistance.toFixed(2); // already in km
+  };
+
+  // Format distance with unit
+  const formatDistance = (distance, unit = distanceUnit) => {
+    const convertedDistance = convertDistance(distance, unit);
+    if (convertedDistance === null) return "--";
+    return `${convertedDistance} ${unit}`;
+  };
+
+  // Calculate distance between two points with enhanced accuracy
+  const calculateDistance = (point1, point2, useCache = true) => {
+    // Validate input points
+    if (!point1 || !point2 ||
+        !Array.isArray(point1) || !Array.isArray(point2) ||
+        point1.length < 2 || point2.length < 2) {
+      return null;
+    }
+
+    // Check if values are valid numbers
+    const lat1 = Number(point1[0]);
+    const lon1 = Number(point1[1]);
+    const lat2 = Number(point2[0]);
+    const lon2 = Number(point2[1]);
+
+    if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+      return null;
+    }
+
+    // Generate cache key
+    const cacheKey = `${lat1.toFixed(6)},${lon1.toFixed(6)}-${lat2.toFixed(6)},${lon2.toFixed(6)}`;
+
+    // Check cache first if enabled
+    if (useCache && distanceCache.current.has(cacheKey)) {
+      return distanceCache.current.get(cacheKey);
+    }
+
+    // Enhanced Haversine formula with better precision
     const toRad = (value) => (value * Math.PI) / 180;
-    const R = 6371; // Earth's radius in km
+    const R = 6371.0710; // Earth's mean radius in km (WGS-84 ellipsoid)
 
-    const dLat = toRad(point2[0] - point1[0]);
-    const dLon = toRad(point2[1] - point1[1]);
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
 
+    // Use the improved haversine formula
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(point1[0])) * Math.cos(toRad(point2[0])) *
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a))); // Prevent negative values
 
-    return distance.toFixed(2);
+    // Apply correction factor for road distances (typically 1.2-1.4 times the straight-line distance)
+    const roadFactor = 1.3;
+    const straightDistance = R * c;
+    const roadDistance = straightDistance * roadFactor;
+
+    // Round to 2 decimal places for display
+    const result = parseFloat(roadDistance.toFixed(2));
+
+    // Store in cache if enabled
+    if (useCache) {
+      distanceCache.current.set(cacheKey, result);
+
+      // Limit cache size to prevent memory issues
+      if (distanceCache.current.size > 1000) {
+        // Remove oldest entries (first 200)
+        const keys = Array.from(distanceCache.current.keys()).slice(0, 200);
+        keys.forEach(key => distanceCache.current.delete(key));
+      }
+    }
+
+    return result;
   };
 
   return (
@@ -419,7 +733,7 @@ const CaptainDashboard = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs text-gray-400">Today's Earnings</p>
-                  <p className="text-xl font-bold text-white">₹{(captainData?.todayEarnings || 0).toLocaleString('en-IN')}</p>
+                  <p className="text-xl font-bold text-white earnings-value">₹{(captainData?.todayEarnings || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-secondary bg-opacity-20 p-2 rounded-lg">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -428,12 +742,25 @@ const CaptainDashboard = () => {
                 </div>
               </div>
               <div className="mt-2 flex items-center text-xs">
-                <span className="text-green-400 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                  12%
-                </span>
+                {captainData?.earningsChange > 0 ? (
+                  <span className="text-green-400 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                    {captainData?.earningsChange || 0}%
+                  </span>
+                ) : captainData?.earningsChange < 0 ? (
+                  <span className="text-red-400 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    {Math.abs(captainData?.earningsChange || 0)}%
+                  </span>
+                ) : (
+                  <span className="text-gray-400 flex items-center">
+                    0%
+                  </span>
+                )}
                 <span className="text-gray-500 ml-2">from yesterday</span>
               </div>
             </div>
@@ -452,10 +779,7 @@ const CaptainDashboard = () => {
               </div>
               <div className="mt-2 flex items-center text-xs">
                 <span className="text-blue-400 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                  3
+                  {captainData?.todayRides || 0}
                 </span>
                 <span className="text-gray-500 ml-2">today</span>
               </div>
@@ -477,12 +801,25 @@ const CaptainDashboard = () => {
                 </div>
               </div>
               <div className="mt-2 flex items-center text-xs">
-                <span className="text-yellow-400 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                  0.2
-                </span>
+                {captainData?.ratingChange > 0 ? (
+                  <span className="text-yellow-400 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                    {captainData?.ratingChange.toFixed(1) || 0}
+                  </span>
+                ) : captainData?.ratingChange < 0 ? (
+                  <span className="text-red-400 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    {Math.abs(captainData?.ratingChange || 0).toFixed(1)}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 flex items-center">
+                    0.0
+                  </span>
+                )}
                 <span className="text-gray-500 ml-2">last week</span>
               </div>
             </div>
@@ -511,6 +848,16 @@ const CaptainDashboard = () => {
                   )}
                 </span>
               </div>
+              {isOnline && (
+                <div className="mt-1 flex items-center text-xs">
+                  <div className={`h-2 w-2 rounded-full mr-1 ${locationError ? 'bg-red-500' : locationAccuracy && locationAccuracy < 20 ? 'bg-green-500' : locationAccuracy && locationAccuracy < 50 ? 'bg-yellow-500' : 'bg-gray-500'}`}></div>
+                  <span className={locationError ? 'text-red-400' : 'text-gray-400'}>
+                    {locationError ? locationError :
+                     locationAccuracy ? `Accuracy: ${locationAccuracy.toFixed(0)}m (${locationUpdateTime})` :
+                     "Waiting for location..."}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -540,6 +887,18 @@ const CaptainDashboard = () => {
               </div>
 
               <div className="flex space-x-2">
+                {/* Distance Unit Toggle */}
+                <button
+                  onClick={() => setDistanceUnit(distanceUnit === "km" ? "miles" : "km")}
+                  className="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg transition-all duration-200 flex items-center"
+                  title={`Switch to ${distanceUnit === "km" ? "miles" : "km"}`}
+                >
+                  <span className="text-xs font-medium text-gray-300 mr-1">{distanceUnit.toUpperCase()}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </button>
+
                 {/* Map Type Toggle */}
                 <button className="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg transition-all duration-200">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -614,24 +973,43 @@ const CaptainDashboard = () => {
                           ETA: {activeRide.estimatedTime || Math.ceil(activeRide.distance * 3)} mins
                         </div>
                       </div>
-                      <p className="text-sm text-gray-300">Continue straight for 500m, then turn right onto Main Street</p>
+                      <p className="text-sm text-gray-300">
+                        {activeRide.navigationInstructions || "Follow the route on the map to reach your destination"}
+                      </p>
 
                       {/* Progress bar */}
                       <div className="mt-2 bg-gray-800 rounded-full h-1.5 overflow-hidden">
                         <div
                           className="bg-gradient-to-r from-secondary to-pink-500 h-full rounded-full"
-                          style={{ width: `${Math.min(Math.max((calculateDistance(currentLocation, activeRide.pickup) / activeRide.distance) * 100, 0), 100)}%` }}
+                          style={{
+                            width: (() => {
+                              // Calculate progress based on distance
+                              const totalDistance = activeRide.distance || 1; // Prevent division by zero
+                              const remainingDistance = calculateDistance(currentLocation, activeRide.drop) || 0;
+                              const progress = Math.max(0, Math.min(100, 100 - (remainingDistance / totalDistance * 100)));
+                              return `${progress}%`;
+                            })()
+                          }}
                         ></div>
                       </div>
 
                       <div className="flex justify-between mt-1 text-xs text-gray-400">
-                        <span>Distance: {typeof calculateDistance(currentLocation, activeRide.drop) === 'number' ? calculateDistance(currentLocation, activeRide.drop).toFixed(1) : calculateDistance(currentLocation, activeRide.drop)} km remaining</span>
-                        <span>{activeRide.distance} km total</span>
+                        <span>Distance: {formatDistance(calculateDistance(currentLocation, activeRide.drop))} remaining</span>
+                        <span>{formatDistance(activeRide.distance)} total</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Ride Statistics Component */}
+            <div className="bg-black bg-opacity-70 backdrop-blur-md rounded-xl border border-gray-800 overflow-hidden shadow-lg mt-6">
+              <RideStatistics
+                captainData={captainData}
+                className="p-4"
+                delay={0.2}
+              />
             </div>
           </div>
         </div>
@@ -690,7 +1068,7 @@ const CaptainDashboard = () => {
                 <div className="flex flex-wrap gap-2">
                   <div className="bg-black bg-opacity-20 px-3 py-2 rounded-lg">
                     <p className="text-xs text-gray-400">Distance</p>
-                    <p className="text-sm font-medium">{activeRide.distance} km</p>
+                    <p className="text-sm font-medium">{formatDistance(activeRide.distance)}</p>
                   </div>
 
                   <div className="bg-black bg-opacity-20 px-3 py-2 rounded-lg">
@@ -710,8 +1088,8 @@ const CaptainDashboard = () => {
                       </p>
                       <p className="text-sm font-medium">
                         {activeRide.status === "accepted"
-                          ? calculateDistance(currentLocation, activeRide.pickup)
-                          : calculateDistance(currentLocation, activeRide.drop)} km
+                          ? formatDistance(calculateDistance(currentLocation, activeRide.pickup))
+                          : formatDistance(calculateDistance(currentLocation, activeRide.drop))}
                       </p>
                     </div>
                   )}
@@ -792,7 +1170,7 @@ const CaptainDashboard = () => {
                         <div className="flex flex-wrap gap-2">
                           <div className="bg-black bg-opacity-20 px-3 py-2 rounded-lg">
                             <p className="text-xs text-gray-400">Distance</p>
-                            <p className="text-sm font-medium">{request.distance} km</p>
+                            <p className="text-sm font-medium">{formatDistance(request.distance)}</p>
                           </div>
 
                           <div className="bg-black bg-opacity-20 px-3 py-2 rounded-lg">
@@ -808,7 +1186,7 @@ const CaptainDashboard = () => {
                           {currentLocation && request.pickup && (
                             <div className="bg-black bg-opacity-20 px-3 py-2 rounded-lg">
                               <p className="text-xs text-gray-400">Distance to pickup</p>
-                              <p className="text-sm font-medium">{calculateDistance(currentLocation, request.pickup)} km</p>
+                              <p className="text-sm font-medium">{formatDistance(calculateDistance(currentLocation, request.pickup))}</p>
                             </div>
                           )}
                         </div>

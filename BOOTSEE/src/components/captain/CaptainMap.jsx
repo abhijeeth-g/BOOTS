@@ -4,6 +4,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { gsap } from "gsap";
 
+// Import custom components
+import WeatherOverlay from "./WeatherOverlay";
+import HeatmapLayer from "./HeatmapLayer";
+import TrafficLayer from "./TrafficLayer";
+
 // Import marker icons directly
 import bikeMarkerIcon from "../../assets/bike-marker.svg";
 import userMarkerIcon from "../../assets/user-marker.svg";
@@ -11,6 +16,20 @@ import destinationMarkerIcon from "../../assets/destination-marker.svg";
 
 // Import custom CSS for map styling
 import "./CaptainMap.css";
+
+// Import leaflet plugins dynamically
+// Note: In Vite/React, we need to use dynamic imports or direct script tags for these plugins
+// We'll handle their absence gracefully in the component
+
+// Add a flag to track if plugins are available
+const pluginsAvailable = {
+  routingMachine: typeof L.Routing !== 'undefined',
+  heatmap: typeof L.heatLayer !== 'undefined',
+  polylineDecorator: typeof L.polylineDecorator !== 'undefined'
+};
+
+// Log available plugins
+console.log("Leaflet plugins availability:", pluginsAvailable);
 
 // Try to import leaflet routing machine
 // We'll use a fallback if it's not available
@@ -49,6 +68,15 @@ const createCustomIcon = (iconUrl, iconSize) => {
     iconAnchor: [16, 16],
     popupAnchor: [0, -16],
   });
+};
+
+// Calculate angle between two points (for arrow direction)
+const getAngle = (from, to) => {
+  const dx = to[1] - from[1];
+  const dy = to[0] - from[0];
+  const rad = Math.atan2(dx, dy);
+  const deg = rad * 180 / Math.PI;
+  return deg;
 };
 
 // Enhanced Animated Marker component
@@ -311,27 +339,55 @@ const RoutingMachine = ({
           }
         }
 
-        // Add direction arrow
-        const arrowHead = L.polylineDecorator(mainLine, {
-          patterns: [
-            {
-              offset: '50%',
-              repeat: 0,
-              symbol: L.Symbol.arrowHead({
-                pixelSize: 15,
-                polygon: false,
-                pathOptions: {
-                  color: primary,
-                  fillOpacity: 1,
-                  weight: 2
+        // Add direction arrow if polylineDecorator is available
+        try {
+          // Check if polylineDecorator is available
+          if (typeof L.polylineDecorator === 'function') {
+            console.log("Using polylineDecorator for route arrows");
+            const arrowHead = L.polylineDecorator(mainLine, {
+              patterns: [
+                {
+                  offset: '50%',
+                  repeat: 0,
+                  symbol: L.Symbol.arrowHead({
+                    pixelSize: 15,
+                    polygon: false,
+                    pathOptions: {
+                      color: primary,
+                      fillOpacity: 1,
+                      weight: 2
+                    }
+                  })
                 }
-              })
-            }
-          ]
-        }).addTo(map);
+              ]
+            }).addTo(map);
 
-        // Add to layer group for cleanup
-        routeLineRef.current.addLayer(arrowHead);
+            // Add to layer group for cleanup
+            routeLineRef.current.addLayer(arrowHead);
+          } else {
+            // Fallback: Add a simple arrow marker at the midpoint
+            console.log("Polyline decorator not available, using fallback arrow");
+            const midPoint = [
+              (from[0] + to[0]) / 2,
+              (from[1] + to[1]) / 2
+            ];
+
+            // Create a simple arrow marker
+            const arrowIcon = L.divIcon({
+              html: `<div style="color: ${primary}; font-size: 20px; transform: rotate(${getAngle(from, to)}deg);">→</div>`,
+              className: 'arrow-icon',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+
+            const arrowMarker = L.marker(midPoint, { icon: arrowIcon }).addTo(map);
+            routeLineRef.current.addLayer(arrowMarker);
+          }
+        } catch (error) {
+          console.warn("Error adding route direction indicator:", error);
+        }
+
+
 
         return () => {
           if (routeLineRef.current) {
@@ -507,22 +563,50 @@ const MapRecenter = ({
   return null;
 };
 
-// Map Controls component for additional map functionality
-const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapType, mapType }) => {
+// Enhanced Map Controls component with additional functionality
+const MapControls = ({
+  onRecenter,
+  onToggleFollowMode,
+  followMode,
+  onToggleMapType,
+  mapType,
+  onToggleWeather,
+  weatherEnabled,
+  onToggleTraffic,
+  trafficEnabled,
+  onToggleHeatmap,
+  heatmapEnabled,
+  onToggle3D,
+  mode3DEnabled
+}) => {
   const map = useMap();
   const [showControls, setShowControls] = useState(true);
+  const controlsRef = useRef(null);
 
   // Toggle map controls visibility
   const toggleControls = () => {
     setShowControls(prev => !prev);
   };
 
+  // Animate controls when visibility changes
+  useEffect(() => {
+    if (controlsRef.current) {
+      if (showControls) {
+        gsap.fromTo(
+          controlsRef.current,
+          { opacity: 0, x: 20 },
+          { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }
+        );
+      }
+    }
+  }, [showControls]);
+
   return (
     <div className="absolute top-4 right-4 z-[1000]">
       {/* Toggle button for controls */}
       <button
         onClick={toggleControls}
-        className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 mb-2 hover:bg-opacity-90 transition-all duration-200"
+        className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 mb-2 hover:bg-opacity-90 transition-all duration-200 hover:scale-105"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -531,11 +615,11 @@ const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapTy
 
       {/* Control buttons */}
       {showControls && (
-        <div className="flex flex-col space-y-2">
+        <div ref={controlsRef} className="flex flex-col space-y-2">
           {/* Recenter button */}
           <button
             onClick={onRecenter}
-            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container"
+            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105"
             title="Recenter Map"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -547,7 +631,7 @@ const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapTy
           {/* Toggle follow mode */}
           <button
             onClick={onToggleFollowMode}
-            className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container ${followMode ? 'bg-secondary bg-opacity-70' : 'bg-black bg-opacity-70'}`}
+            className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105 ${followMode ? 'bg-secondary bg-opacity-70' : 'bg-black bg-opacity-70'}`}
             title={followMode ? "Follow Mode On" : "Follow Mode Off"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -560,7 +644,7 @@ const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapTy
           {/* Toggle map type */}
           <button
             onClick={onToggleMapType}
-            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container"
+            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105"
             title={`Map Type: ${mapType}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -569,10 +653,67 @@ const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapTy
             <span className="tooltip">{`Map Type: ${mapType}`}</span>
           </button>
 
+          {/* Toggle weather overlay */}
+          {onToggleWeather && (
+            <button
+              onClick={onToggleWeather}
+              className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105 ${weatherEnabled ? 'bg-blue-500 bg-opacity-70' : 'bg-black bg-opacity-70'}`}
+              title={weatherEnabled ? "Weather On" : "Weather Off"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+              <span className="tooltip">{weatherEnabled ? "Weather On" : "Weather Off"}</span>
+            </button>
+          )}
+
+          {/* Toggle traffic overlay */}
+          {onToggleTraffic && (
+            <button
+              onClick={onToggleTraffic}
+              className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105 ${trafficEnabled ? 'bg-red-500 bg-opacity-70' : 'bg-black bg-opacity-70'}`}
+              title={trafficEnabled ? "Traffic On" : "Traffic Off"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <span className="tooltip">{trafficEnabled ? "Traffic On" : "Traffic Off"}</span>
+            </button>
+          )}
+
+          {/* Toggle heatmap overlay */}
+          {onToggleHeatmap && (
+            <button
+              onClick={onToggleHeatmap}
+              className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105 ${heatmapEnabled ? 'bg-secondary bg-opacity-70' : 'bg-black bg-opacity-70'}`}
+              title={heatmapEnabled ? "Heatmap On" : "Heatmap Off"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+              </svg>
+              <span className="tooltip">{heatmapEnabled ? "Heatmap On" : "Heatmap Off"}</span>
+            </button>
+          )}
+
+          {/* Toggle 3D mode */}
+          {onToggle3D && (
+            <button
+              onClick={onToggle3D}
+              className={`p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105 ${mode3DEnabled ? 'bg-purple-500 bg-opacity-70' : 'bg-black bg-opacity-70'}`}
+              title={mode3DEnabled ? "3D Mode On" : "3D Mode Off"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              <span className="tooltip">{mode3DEnabled ? "3D Mode On" : "3D Mode Off"}</span>
+            </button>
+          )}
+
           {/* Zoom in */}
           <button
             onClick={() => map.zoomIn()}
-            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container"
+            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105"
             title="Zoom In"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -584,7 +725,7 @@ const MapControls = ({ onRecenter, onToggleFollowMode, followMode, onToggleMapTy
           {/* Zoom out */}
           <button
             onClick={() => map.zoomOut()}
-            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container"
+            className="bg-black bg-opacity-70 p-2 rounded-lg shadow-lg border border-gray-700 hover:bg-opacity-90 transition-all duration-200 tooltip-container hover:scale-105"
             title="Zoom Out"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -615,6 +756,12 @@ const CaptainMap = ({
   const [followMode, setFollowMode] = useState(true);
   const [mapType, setMapType] = useState('streets'); // streets, satellite
   const [routeInfo, setRouteInfo] = useState(null);
+
+  // Feature toggles
+  const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const [trafficEnabled, setTrafficEnabled] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [mode3DEnabled, setMode3DEnabled] = useState(false);
 
   // Refs
   const mapContainerRef = useRef(null);
@@ -700,6 +847,44 @@ const CaptainMap = ({
     setMapType(prev => prev === 'streets' ? 'satellite' : 'streets');
   }, []);
 
+  // Feature toggle handlers
+  const handleToggleWeather = useCallback(() => {
+    setWeatherEnabled(prev => !prev);
+  }, []);
+
+  const handleToggleTraffic = useCallback(() => {
+    setTrafficEnabled(prev => !prev);
+  }, []);
+
+  const handleToggleHeatmap = useCallback(() => {
+    setHeatmapEnabled(prev => !prev);
+  }, []);
+
+  const handleToggle3D = useCallback(() => {
+    setMode3DEnabled(prev => !prev);
+
+    // Apply 3D effect to the map container
+    if (mapContainerRef.current) {
+      if (!mode3DEnabled) {
+        // Enable 3D mode
+        gsap.to(mapContainerRef.current, {
+          rotationX: 45,
+          perspective: 1000,
+          duration: 1,
+          ease: "power2.inOut"
+        });
+      } else {
+        // Disable 3D mode
+        gsap.to(mapContainerRef.current, {
+          rotationX: 0,
+          perspective: 0,
+          duration: 1,
+          ease: "power2.inOut"
+        });
+      }
+    }
+  }, [mode3DEnabled]);
+
   // When the map is ready
   const handleMapReady = useCallback((map) => {
     console.log("Map is ready");
@@ -711,9 +896,16 @@ const CaptainMap = ({
   if (!currentLocation) {
     return (
       <div className="h-full flex items-center justify-center bg-black bg-opacity-30 rounded-xl">
-        <div className="text-center">
+        <div className="text-center bg-black bg-opacity-70 p-6 rounded-xl border border-gray-700">
           <div className="animate-spin h-10 w-10 border-4 border-secondary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-300">Waiting for location...</p>
+          <p className="text-white font-medium">Waiting for location...</p>
+          <p className="text-gray-400 text-sm mt-2">Please enable location services to use the map</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-secondary hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -739,6 +931,7 @@ const CaptainMap = ({
         zoomControl={false}
         whenReady={(e) => handleMapReady(e.target)}
         attributionControl={false}
+        className={mode3DEnabled ? 'map-3d-mode' : ''}
       >
         {/* Map tile layer based on selected map type */}
         {mapType === 'streets' ? (
@@ -845,6 +1038,30 @@ const CaptainMap = ({
           />
         )}
 
+        {/* Weather overlay */}
+        {weatherEnabled && currentLocation && (
+          <WeatherOverlay
+            position={currentLocation}
+            enabled={weatherEnabled}
+          />
+        )}
+
+        {/* Traffic overlay */}
+        {trafficEnabled && (
+          <TrafficLayer
+            enabled={trafficEnabled}
+            onToggle={handleToggleTraffic}
+          />
+        )}
+
+        {/* Heatmap overlay */}
+        {heatmapEnabled && (
+          <HeatmapLayer
+            enabled={heatmapEnabled}
+            onToggle={handleToggleHeatmap}
+          />
+        )}
+
         {/* Keep map centered on captain's location if in follow mode */}
         <MapRecenter
           position={currentLocation}
@@ -861,6 +1078,14 @@ const CaptainMap = ({
             followMode={followMode}
             onToggleMapType={handleToggleMapType}
             mapType={mapType}
+            onToggleWeather={handleToggleWeather}
+            weatherEnabled={weatherEnabled}
+            onToggleTraffic={handleToggleTraffic}
+            trafficEnabled={trafficEnabled}
+            onToggleHeatmap={handleToggleHeatmap}
+            heatmapEnabled={heatmapEnabled}
+            onToggle3D={handleToggle3D}
+            mode3DEnabled={mode3DEnabled}
           />
         )}
 
@@ -876,10 +1101,16 @@ const CaptainMap = ({
               <div className="w-3 h-3 rounded-full bg-[#4F46E5] mr-2 border border-white"></div>
               <span className="text-xs text-white">Pickup Location</span>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center mb-1">
               <div className="w-3 h-3 rounded-full bg-[#10B981] mr-2 border border-white"></div>
               <span className="text-xs text-white">Destination</span>
             </div>
+            {heatmapEnabled && (
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-pink-300 to-secondary mr-2 border border-white"></div>
+                <span className="text-xs text-white">High Demand</span>
+              </div>
+            )}
           </div>
         )}
 

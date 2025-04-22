@@ -140,3 +140,30 @@
     opacity: 0;
   }
 }
+
+/* Fallback arrow icon */
+.arrow-icon {
+  background: transparent !important;
+  border: none !important;
+  font-size: 24px !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.arrow-icon div {
+  animation: pulse-arrow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-arrow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
