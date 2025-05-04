@@ -478,7 +478,7 @@ const CaptainSignup = () => {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-center text-sm text-gray-300">
+          <p className="text-center text-sm text-white">
             Already have an account?{" "}
             <span
               onClick={() => navigate("/captain/login")}
@@ -490,7 +490,7 @@ const CaptainSignup = () => {
           <div className="mt-4 text-center">
             <span
               onClick={() => navigate("/signup")}
-              className="text-gray-300 text-sm hover:text-secondary transition-colors duration-300 cursor-pointer flex items-center justify-center"
+              className="text-white text-sm hover:text-secondary transition-colors duration-300 cursor-pointer flex items-center justify-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

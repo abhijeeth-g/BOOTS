@@ -13,7 +13,7 @@ const CaptainNavbar = () => {
   useEffect(() => {
     const fetchCaptainData = async () => {
       if (!user) return;
-      
+
       try {
         const captainDoc = await getDoc(doc(db, "captains", user.uid));
         if (captainDoc.exists()) {
@@ -23,7 +23,7 @@ const CaptainNavbar = () => {
         console.error("Error fetching captain data:", error);
       }
     };
-    
+
     fetchCaptainData();
   }, [user]);
 
@@ -105,6 +105,16 @@ const CaptainNavbar = () => {
                 >
                   Profile
                 </Link>
+                <Link
+                  to="/captain/earnings"
+                  className={`px-3 py-2 rounded-md text-lg font-medium ${
+                    location.pathname === "/captain/earnings"
+                      ? "bg-secondary text-accent"
+                      : "text-accent hover:bg-dark-primary"
+                  }`}
+                >
+                  Earnings
+                </Link>
                 {user && (
                   <button
                     onClick={handleLogout}
@@ -116,7 +126,7 @@ const CaptainNavbar = () => {
               </div>
             </div>
           </div>
-          
+
           {/* User info */}
           {user && captainData && (
             <div className="hidden md:flex items-center">
@@ -133,7 +143,7 @@ const CaptainNavbar = () => {
           )}
         </div>
       </div>
-      
+
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="sm:hidden bg-primary px-2 pt-2 pb-3 space-y-1">
@@ -166,6 +176,16 @@ const CaptainNavbar = () => {
             }`}
           >
             Profile
+          </Link>
+          <Link
+            to="/captain/earnings"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              location.pathname === "/captain/earnings"
+                ? "bg-secondary text-accent"
+                : "text-accent hover:bg-dark-primary"
+            }`}
+          >
+            Earnings
           </Link>
           {user && (
             <button

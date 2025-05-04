@@ -1,0 +1,205 @@
+/**
+ * Vehicle Markers Styles
+ * Custom styles for vehicle markers on the map
+ */
+
+/* Base marker styles */
+.vehicle-marker {
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+  transition: all 0.3s ease;
+}
+
+/* Animation for markers */
+.vehicle-marker.animated {
+  animation: marker-pulse 2s infinite;
+}
+
+/* Specific vehicle type styles */
+.car-marker {
+  filter: drop-shadow(0 2px 3px rgba(0, 102, 255, 0.4));
+}
+
+.bike-marker, 
+.motorcycle-marker, 
+.scooter-marker {
+  filter: drop-shadow(0 2px 3px rgba(255, 69, 166, 0.4));
+}
+
+.auto-marker,
+.rickshaw-marker {
+  filter: drop-shadow(0 2px 3px rgba(255, 165, 0, 0.4));
+}
+
+.user-marker {
+  filter: drop-shadow(0 2px 3px rgba(0, 102, 255, 0.5));
+  z-index: 1000 !important;
+}
+
+.destination-marker {
+  filter: drop-shadow(0 2px 3px rgba(255, 0, 0, 0.5));
+  z-index: 1000 !important;
+}
+
+/* Pulse animation */
+@keyframes marker-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Active marker (selected) */
+.vehicle-marker.active {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+  transform: scale(1.2);
+  z-index: 1001 !important;
+}
+
+/* Hover effects */
+.leaflet-marker-icon:hover {
+  transform: scale(1.1);
+  cursor: pointer;
+}
+
+/* Colored dot icon */
+.colored-dot-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Route tooltip styles */
+.route-tooltip {
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.route-tooltip .leaflet-tooltip-content {
+  color: white;
+  font-weight: bold;
+}
+
+.route-tooltip::before {
+  display: none;
+}
+
+.route-info {
+  padding: 4px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Turn marker styles */
+.turn-marker {
+  width: 8px;
+  height: 8px;
+  background-color: #FF1493;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Vehicle popup styles */
+.vehicle-popup {
+  font-family: 'Inter', sans-serif;
+}
+
+.vehicle-popup-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vehicle-popup-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+.vehicle-popup-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.vehicle-popup-content {
+  font-size: 12px;
+  color: #666;
+}
+
+.vehicle-popup-footer {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #999;
+  text-align: right;
+}
+
+/* Captain marker styles */
+.captain-marker {
+  border: 2px solid #FF1493;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 20, 147, 0.3);
+}
+
+/* Available captain pulse animation */
+.captain-available {
+  animation: available-pulse 2s infinite;
+}
+
+@keyframes available-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 20, 147, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 20, 147, 0);
+  }
+}
+
+/* Moving animation */
+.moving {
+  animation: moving-bounce 1s infinite;
+}
+
+@keyframes moving-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Cluster marker styles */
+.vehicle-cluster {
+  background-color: rgba(255, 20, 147, 0.7);
+  border: 2px solid white;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.vehicle-cluster-car {
+  background-color: rgba(0, 102, 255, 0.7);
+}
+
+.vehicle-cluster-bike {
+  background-color: rgba(255, 69, 166, 0.7);
+}
+
+.vehicle-cluster-auto {
+  background-color: rgba(255, 165, 0, 0.7);
+}

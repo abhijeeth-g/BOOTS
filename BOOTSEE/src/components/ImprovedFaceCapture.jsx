@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { storage } from "../firebase/config";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import SimpleStorageService from "../services/SimpleStorageService";
+import { toast } from "react-toastify";
 
 const ImprovedFaceCapture = ({ onCapture, userId }) => {
   // State management
@@ -9,11 +9,11 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
   const [capturedImage, setCapturedImage] = useState(null);
   const [error, setError] = useState(null);
   const [stream, setStream] = useState(null);
-  
+
   // Refs
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  
+
   // Clean up camera resources when component unmounts
   useEffect(() => {
     return () => {
@@ -22,18 +22,18 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
       }
     };
   }, [stream]);
-  
+
   // Start camera function
   const startCamera = async () => {
     try {
       setError(null);
       setStep("camera");
-      
+
       // Stop any existing stream
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      
+
       // Request camera access
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -43,9 +43,9 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
           aspectRatio: { ideal: 1 }
         }
       });
-      
+
       setStream(mediaStream);
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         videoRef.current.onloadedmetadata = () => {
@@ -57,102 +57,122 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
     } catch (err) {
       console.error("Error accessing camera:", err);
       setError(
-        err.name === "NotAllowedError" 
+        err.name === "NotAllowedError"
           ? "Camera access denied. Please allow camera access in your browser settings."
           : `Could not access camera: ${err.message || "Unknown error"}`
       );
       setStep("initial");
     }
   };
-  
+
   // Take photo function
   const takePhoto = () => {
     if (!cameraReady || !videoRef.current) return;
-    
+
     try {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      
+
       // Set canvas size to match video (square)
       const size = Math.min(video.videoWidth, video.videoHeight);
       canvas.width = size;
       canvas.height = size;
-      
+
       // Calculate offset to center the crop
       const offsetX = (video.videoWidth - size) / 2;
       const offsetY = (video.videoHeight - size) / 2;
-      
+
       // Draw video to canvas (cropped to square)
       const ctx = canvas.getContext("2d");
       ctx.drawImage(
-        video, 
+        video,
         offsetX, offsetY, size, size, // Source rectangle
         0, 0, size, size // Destination rectangle
       );
-      
+
       // Get image data
       const imageData = canvas.toDataURL("image/jpeg", 0.9);
       setCapturedImage(imageData);
       setStep("preview");
-      
+
       // Stop camera
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         setStream(null);
       }
-      
+
     } catch (err) {
       console.error("Error capturing photo:", err);
       setError(`Failed to capture photo: ${err.message || "Unknown error"}`);
     }
   };
-  
+
   // Retake photo function
   const retakePhoto = () => {
     setCapturedImage(null);
     setCameraReady(false);
     startCamera();
   };
-  
+
   // Verify photo function
   const verifyPhoto = async () => {
+    if (!capturedImage || !userId) {
+      setError("Missing image or user ID");
+      return;
+    }
+
     setStep("verifying");
-    
+    setError(null);
+
     try {
-      // Simulate verification process
+      // Upload face image to Firebase Storage
+      const downloadURL = await SimpleStorageService.uploadFaceImage(capturedImage, userId);
+
+      // Simulate verification process (in a real app, this would call a face verification API)
       await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Store the download URL for later use
+      setCapturedImage(downloadURL);
+
+      // Show success toast
+      toast.success("Face verification successful!");
+
+      // Update state
       setStep("verified");
     } catch (err) {
       console.error("Error verifying photo:", err);
       setError(`Verification failed: ${err.message || "Unknown error"}`);
       setStep("preview");
+
+      // Show error toast
+      toast.error("Face verification failed. Please try again.");
     }
   };
-  
+
   // Submit verified photo
   const submitVerifiedPhoto = () => {
     if (onCapture && capturedImage) {
       onCapture(capturedImage);
     }
   };
-  
+
   // Use mock image (for testing)
   const useMockImage = () => {
     setCapturedImage("https://example.com/mock-face-image.jpg");
     setStep("preview");
   };
-  
+
   return (
     <div className="bg-dark-primary rounded-xl p-6 shadow-lg">
       <h3 className="text-xl font-semibold text-secondary mb-4">Face Verification</h3>
-      
+
       {/* Error message */}
       {error && (
         <div className="bg-red-900 bg-opacity-30 text-red-200 p-3 rounded-lg mb-4">
           {error}
         </div>
       )}
-      
+
       {/* Step 1: Initial */}
       {step === "initial" && (
         <div className="flex flex-col items-center">
@@ -165,13 +185,13 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               <span className="text-yellow-400">Note:</span> You'll need to allow camera access when prompted.
             </p>
           </div>
-          
+
           <div className="w-64 h-64 bg-gray-800 rounded-lg mb-6 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          
+
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
               onClick={startCamera}
@@ -179,7 +199,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
             >
               Take Photo
             </button>
-            
+
             <button
               onClick={useMockImage}
               className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition duration-200 text-sm"
@@ -189,7 +209,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
           </div>
         </div>
       )}
-      
+
       {/* Step 2: Camera */}
       {step === "camera" && (
         <div className="flex flex-col items-center">
@@ -199,7 +219,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               Position your face in the square and make sure you're in a well-lit area.
             </p>
           </div>
-          
+
           {/* Camera container */}
           <div className="relative w-64 h-64 bg-black rounded-lg mb-6 overflow-hidden">
             {/* Video element */}
@@ -210,10 +230,10 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               muted
               className="absolute inset-0 w-full h-full object-cover"
             />
-            
+
             {/* Square overlay */}
             <div className="absolute inset-0 border-2 border-secondary"></div>
-            
+
             {/* Loading overlay */}
             {!cameraReady && (
               <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
@@ -226,7 +246,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
                 </div>
               </div>
             )}
-            
+
             {/* Face guide */}
             {cameraReady && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -234,7 +254,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </div>
             )}
           </div>
-          
+
           {/* Camera controls */}
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
@@ -260,7 +280,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
                 </>
               )}
             </button>
-            
+
             <button
               onClick={() => {
                 if (stream) {
@@ -276,7 +296,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
           </div>
         </div>
       )}
-      
+
       {/* Step 3: Preview */}
       {step === "preview" && (
         <div className="flex flex-col items-center">
@@ -286,13 +306,13 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               Is your face clearly visible? If not, you can retake the photo.
             </p>
           </div>
-          
+
           {/* Photo preview */}
           <div className="relative w-64 h-64 bg-black rounded-lg mb-6 overflow-hidden">
             {capturedImage && capturedImage.startsWith('data:') ? (
-              <img 
-                src={capturedImage} 
-                alt="Captured face" 
+              <img
+                src={capturedImage}
+                alt="Captured face"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -306,7 +326,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </div>
             )}
           </div>
-          
+
           {/* Preview controls */}
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
@@ -318,7 +338,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </svg>
               Verify Photo
             </button>
-            
+
             <button
               onClick={retakePhoto}
               className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition duration-200 text-sm"
@@ -328,7 +348,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
           </div>
         </div>
       )}
-      
+
       {/* Step 4: Verifying */}
       {step === "verifying" && (
         <div className="flex flex-col items-center">
@@ -338,19 +358,19 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               Please wait while we verify your photo...
             </p>
           </div>
-          
+
           {/* Photo with verification overlay */}
           <div className="relative w-64 h-64 bg-black rounded-lg mb-6 overflow-hidden">
             {capturedImage && capturedImage.startsWith('data:') ? (
-              <img 
-                src={capturedImage} 
-                alt="Captured face" 
+              <img
+                src={capturedImage}
+                alt="Captured face"
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-gray-800"></div>
             )}
-            
+
             {/* Verification overlay */}
             <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
               <div className="text-center">
@@ -362,14 +382,14 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Verifying message */}
           <div className="w-full max-w-xs text-center text-gray-400 text-sm">
             This may take a few moments
           </div>
         </div>
       )}
-      
+
       {/* Step 5: Verified */}
       {step === "verified" && (
         <div className="flex flex-col items-center">
@@ -386,19 +406,19 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Photo with success overlay */}
           <div className="relative w-64 h-64 bg-black rounded-lg mb-6 overflow-hidden">
             {capturedImage && capturedImage.startsWith('data:') ? (
-              <img 
-                src={capturedImage} 
-                alt="Verified face" 
+              <img
+                src={capturedImage}
+                alt="Verified face"
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-gray-800"></div>
             )}
-            
+
             {/* Success overlay */}
             <div className="absolute inset-0 bg-green-900 bg-opacity-50 flex items-center justify-center">
               <div className="text-center">
@@ -409,7 +429,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Verified controls */}
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
@@ -421,7 +441,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
               </svg>
               Continue
             </button>
-            
+
             <button
               onClick={retakePhoto}
               className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition duration-200 text-sm"
@@ -431,7 +451,7 @@ const ImprovedFaceCapture = ({ onCapture, userId }) => {
           </div>
         </div>
       )}
-      
+
       {/* Hidden canvas for capturing photos */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>

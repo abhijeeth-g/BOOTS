@@ -274,17 +274,17 @@ const Signup = () => {
   // Render step 2: Document upload
   const renderStep2 = () => (
     <div className="space-y-6">
-      <div className="bg-gray-900 bg-opacity-50 p-4 rounded-lg">
+      <div className="bg-black bg-opacity-70 p-4 rounded-lg border border-gray-800">
         <h3 className="text-lg font-medium text-secondary mb-2">Identity Verification</h3>
-        <p className="text-sm text-gray-300 mb-4">
+        <p className="text-sm text-white mb-4">
           Please upload one of the following documents for verification:
         </p>
-        <ul className="list-disc list-inside text-sm text-gray-300 mb-4 space-y-1">
+        <ul className="list-disc list-inside text-sm text-white mb-4 space-y-1">
           <li>Aadhar Card</li>
           <li>PAN Card</li>
           <li>Driving License</li>
         </ul>
-        <p className="text-sm text-gray-300">
+        <p className="text-sm text-white">
           <span className="text-secondary">Note:</span> Only female users are eligible to create an account.
         </p>
       </div>
@@ -302,12 +302,12 @@ const Signup = () => {
   // Render step 3: Face verification
   const renderStep3 = () => (
     <div className="space-y-6">
-      <div className="bg-gray-900 bg-opacity-50 p-4 rounded-lg">
+      <div className="bg-black bg-opacity-70 p-4 rounded-lg border border-gray-800">
         <h3 className="text-lg font-medium text-secondary mb-2">Face Verification</h3>
-        <p className="text-sm text-gray-300 mb-2">
+        <p className="text-sm text-white mb-2">
           Please take a photo of your face for identity verification.
         </p>
-        <p className="text-sm text-gray-300">
+        <p className="text-sm text-white">
           <span className="text-secondary">Note:</span> Make sure your face is clearly visible and well-lit.
         </p>
       </div>
@@ -420,7 +420,7 @@ const Signup = () => {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-center text-sm text-gray-300">
+          <p className="text-center text-sm text-white">
             Already have an account?{" "}
             <span
               onClick={() => navigate("/login")}
@@ -432,7 +432,7 @@ const Signup = () => {
           <div className="mt-4 text-center">
             <span
               onClick={() => navigate("/captain/signup")}
-              className="text-gray-300 text-sm hover:text-secondary transition-colors duration-300 cursor-pointer flex items-center justify-center"
+              className="text-white text-sm hover:text-secondary transition-colors duration-300 cursor-pointer flex items-center justify-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

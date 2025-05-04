@@ -28,37 +28,39 @@ const RateCaptain = ({ rideId, captainId, onRatingSubmitted }) => {
     setSuccess(null);
 
     try {
-      // Update the ride with the rating
+      const rideDoc = await getDoc(doc(db, "rides", rideId));
+      if (rideDoc.exists() && rideDoc.data().captainRating) {
+        setError("You have already rated this ride.");
+        setIsSubmitting(false);
+        return;
+      }
+
       await updateDoc(doc(db, "rides", rideId), {
         captainRating: rating,
         captainFeedback: feedback,
         ratedAt: new Date()
       });
 
-      // Get the captain's current rating data
       const captainDoc = await getDoc(doc(db, "captains", captainId));
-      const captainData = captainDoc.data();
+      if (!captainDoc.exists()) throw new Error("Captain not found.");
 
-      // Calculate the new average rating
+      const captainData = captainDoc.data();
       const currentRating = captainData.rating || 0;
       const totalRatings = captainData.totalRatings || 0;
 
-      // Calculate new average: ((oldAvg * oldCount) + newRating) / (oldCount + 1)
       const newTotalRatings = totalRatings + 1;
-      const newRating = ((currentRating * totalRatings) + rating) / newTotalRatings;
+      const newRating = parseFloat((((currentRating * totalRatings) + rating) / newTotalRatings).toFixed(2));
 
-      // Update the captain's rating
       await updateDoc(doc(db, "captains", captainId), {
         rating: newRating,
         totalRatings: increment(1)
       });
 
       setSuccess("Thank you for your feedback!");
+      setRating(0);
+      setFeedback("");
 
-      // Call the callback if provided
-      if (onRatingSubmitted) {
-        onRatingSubmitted();
-      }
+      if (onRatingSubmitted) onRatingSubmitted();
     } catch (err) {
       console.error("Error submitting rating:", err);
       setError("Failed to submit rating. Please try again.");
@@ -67,61 +69,48 @@ const RateCaptain = ({ rideId, captainId, onRatingSubmitted }) => {
     }
   };
 
-  // Animation effect when component mounts
   useEffect(() => {
-    // Animate the form elements
-    gsap.fromTo(".rating-form-element",
-      { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, stagger: 0.1, duration: 0.4, ease: "power2.out" }
-    );
-
-    // Special animation for stars
-    gsap.fromTo(".rating-stars",
-      { opacity: 0, scale: 0.5 },
-      { opacity: 1, scale: 1, duration: 0.5, delay: 0.3, ease: "back.out(1.7)" }
-    );
+    gsap.fromTo(".rating-form-element", { opacity: 0, y: 20 }, { opacity: 1, y: 0, stagger: 0.1, duration: 0.4, ease: "power2.out" });
+    gsap.fromTo(".rating-stars", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.5, delay: 0.3, ease: "back.out(1.7)" });
   }, []);
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-black rounded-xl shadow-lg p-6 border border-gray-700">
-      <h2 className="text-xl font-semibold text-white mb-2 flex items-center rating-form-element">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="bg-gradient-to-br from-zinc-900 to-black rounded-2xl shadow-xl p-8 border border-zinc-700">
+      <h2 className="text-2xl font-semibold text-white mb-2 flex items-center rating-form-element">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
         Rate Your Captain
       </h2>
       <p className="text-gray-400 ml-8 mb-4 rating-form-element">Your feedback helps improve our service</p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex flex-col items-center rating-form-element">
           <p className="text-sm text-gray-300 mb-3">How was your ride experience?</p>
           <div className="rating-stars">
-            <RatingStars
-              initialRating={rating}
-              onRatingChange={handleRatingChange}
-              size="lg"
-            />
+            <RatingStars initialRating={rating} onRatingChange={handleRatingChange} size="lg" />
           </div>
         </div>
 
         <div className="rating-form-element">
           <label className="text-sm font-medium text-gray-300 mb-2 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>
             Feedback (Optional)
           </label>
           <textarea
+            aria-label="Ride feedback"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Share your experience..."
-            className="w-full px-4 py-3 bg-black bg-opacity-30 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary text-white resize-none h-24 transition-all duration-300 focus:border-secondary"
+            className="w-full px-4 py-3 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none h-24 transition duration-300"
           />
         </div>
 
         {error && (
           <div className="bg-red-900 bg-opacity-30 border border-red-500 text-red-300 p-4 rounded-lg flex items-start rating-form-element">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>{error}</span>
@@ -130,7 +119,7 @@ const RateCaptain = ({ rideId, captainId, onRatingSubmitted }) => {
 
         {success && (
           <div className="bg-green-900 bg-opacity-30 border border-green-500 text-green-300 p-4 rounded-lg flex items-start rating-form-element">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>{success}</span>
@@ -140,7 +129,7 @@ const RateCaptain = ({ rideId, captainId, onRatingSubmitted }) => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rating-form-element w-full bg-gradient-to-r from-secondary to-pink-600 text-white py-4 rounded-lg font-medium hover:from-pink-600 hover:to-secondary transition duration-300 disabled:opacity-50 transform hover:-translate-y-1 shadow-md hover:shadow-lg flex items-center justify-center"
+          className="w-full py-4 rounded-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 hover:from-purple-600 hover:to-pink-500 shadow-lg transition-transform transform hover:-translate-y-1 disabled:opacity-50 flex items-center justify-center"
         >
           {isSubmitting ? (
             <>

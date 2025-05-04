@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import "../styles/MapStyles.css"; // Import shared map styles
+import "../styles/VehicleMarkers.css"; // Import vehicle marker styles
 import LocationSearch from "./LocationSearch";
 import PaymentOptions from "./PaymentOptions";
 import AnimatedWrapper from "./AnimatedWrapper";
@@ -14,31 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { gsap } from "gsap";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-// Use better icon URLs with fallbacks
-const bikeIconUrl = "https://cdn-icons-png.flaticon.com/512/2972/2972185.png";
-const userIconUrl = "https://cdn-icons-png.flaticon.com/512/1077/1077063.png";
-const destinationIconUrl = "https://cdn-icons-png.flaticon.com/512/1180/1180058.png";
-
-// Create a function to generate colored dot icons
-const createColoredDotIcon = (color, size = 12) => {
-  return L.divIcon({
-    className: 'colored-dot-icon',
-    html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2]
-  });
-};
-
-// Custom icons
-const createCustomIcon = (iconUrl, size = [32, 32]) => {
-  return L.icon({
-    iconUrl,
-    iconSize: size,
-    iconAnchor: [size[0]/2, size[1]],
-    popupAnchor: [0, -size[1]]
-  });
-};
+import VehicleMarkers, { createVehicleIcon, createColoredDotIcon, getVehicleColor, getIconSizeByZoom } from "../utils/VehicleMarkers";
 
 // Fix Leaflet marker icon issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -282,110 +259,176 @@ const RoutingMachine = ({
         }
       }, 5000); // 5 second timeout
 
-      const routingControl = L.Routing.control({
-        waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
-        routeWhileDragging: false,
-        show: false,
-        showAlternatives: false, // Focus on shortest route only
-        router: L.Routing.osrmv1({
-          serviceUrl: 'https://api.openrouteservice.org/v2/directions/driving-car',
-          profile: 'driving-car', // Using OpenRouteService instead of OSRM
-          suppressDemoServerWarning: true,
-          geometryOnly: false,
-          timeout: 5000 // 5 second timeout
-        }),
-        createMarker: function() { return null; }, // Don't create default markers
-        addWaypoints: false,
-        fitSelectedRoutes: fitBounds,
-        lineOptions: {
-          styles: [
-            { color: primary, opacity: 0.9, weight: 7, className: 'route-line' }, // Thicker, more visible main route
-            { color: secondary, opacity: 0.6, weight: 3 }
-          ],
-          extendToWaypoints: true,
-          missingRouteTolerance: 0
+      // Create a more sophisticated route simulation
+      try {
+        // Create a curved path between points with multiple segments
+        const createAdvancedPath = (from, to) => {
+          // Calculate direct distance
+          const dx = to[1] - from[1];
+          const dy = to[0] - from[0];
+          const directDist = Math.sqrt(dx * dx + dy * dy);
+
+          // Determine number of segments based on distance
+          const numSegments = Math.max(3, Math.min(8, Math.ceil(directDist * 100)));
+
+          // Create intermediate waypoints with slight randomness
+          const waypoints = [];
+          waypoints.push(from);
+
+          // Add intermediate points
+          for (let i = 1; i < numSegments; i++) {
+            const ratio = i / numSegments;
+
+            // Base point along the direct line
+            const baseX = from[1] + dx * ratio;
+            const baseY = from[0] + dy * ratio;
+
+            // Add some randomness to simulate real roads
+            // More randomness in the middle, less at the ends
+            const randomFactor = Math.sin(ratio * Math.PI) * 0.005;
+            const offsetX = (Math.random() - 0.5) * randomFactor * directDist;
+            const offsetY = (Math.random() - 0.5) * randomFactor * directDist;
+
+            waypoints.push([baseY + offsetY, baseX + offsetX]);
+          }
+
+          waypoints.push(to);
+
+          // Now create a smooth path through these waypoints
+          const smoothPath = [];
+
+          // Add first point
+          smoothPath.push(waypoints[0]);
+
+          // For each segment between waypoints, create a curved path
+          for (let i = 0; i < waypoints.length - 1; i++) {
+            const start = waypoints[i];
+            const end = waypoints[i + 1];
+
+            // Skip the first point for all but the first segment (to avoid duplicates)
+            const segmentPoints = createCurvedSegment(start, end, i === 0 ? 0 : 1);
+            smoothPath.push(...segmentPoints);
+          }
+
+          return smoothPath;
+        };
+
+        // Create a curved segment between two points
+        const createCurvedSegment = (from, to, startIndex = 0) => {
+          // Calculate midpoint
+          const midX = (from[1] + to[1]) / 2;
+          const midY = (from[0] + to[0]) / 2;
+
+          // Calculate perpendicular offset for curve
+          const dx = to[1] - from[1];
+          const dy = to[0] - from[0];
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Create offset point (perpendicular to line)
+          // Random curve direction
+          const curveDir = Math.random() > 0.5 ? 1 : -1;
+          const curveIntensity = 0.1 + Math.random() * 0.1; // Random intensity
+
+          const offsetX = -dy * dist * curveIntensity * curveDir;
+          const offsetY = dx * dist * curveIntensity * curveDir;
+
+          // Control point for the curve
+          const ctrlX = midX + offsetX;
+          const ctrlY = midY + offsetY;
+
+          // Generate points along the curve
+          const points = [];
+          const steps = 10; // Fewer steps per segment
+
+          for (let i = startIndex; i <= steps; i++) {
+            const t = i / steps;
+
+            // Quadratic Bezier curve formula
+            const x = Math.pow(1-t, 2) * from[1] +
+                     2 * (1-t) * t * ctrlX +
+                     Math.pow(t, 2) * to[1];
+
+            const y = Math.pow(1-t, 2) * from[0] +
+                     2 * (1-t) * t * ctrlY +
+                     Math.pow(t, 2) * to[0];
+
+            points.push([y, x]);
+          }
+
+          return points;
+        };
+
+        // Generate an advanced path between the points
+        const routePath = createAdvancedPath(from, to);
+
+        // Create a polyline with the curved path
+        const routeLine = L.polyline(routePath, {
+          color: primary,
+          weight: 7,
+          opacity: 0.9,
+          className: 'route-line',
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+
+        // Add glow effect
+        const glowLine = L.polyline(routePath, {
+          color: secondary,
+          weight: 12,
+          opacity: 0.3,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+
+        // Add animated dots along the route
+        const routeMarkers = [];
+
+        // Add turn markers at some of the waypoints
+        for (let i = 1; i < routePath.length - 1; i += Math.floor(routePath.length / 5)) {
+          if (i % 2 === 0) { // Only add at some points
+            const turnIcon = L.divIcon({
+              className: 'turn-icon',
+              html: `<div class="turn-marker"></div>`,
+              iconSize: [10, 10]
+            });
+
+            const marker = L.marker(routePath[i], { icon: turnIcon }).addTo(map);
+            routeMarkers.push(marker);
+          }
         }
-      }).addTo(map);
 
-      // Store the routing control for cleanup
-      routingControlRef.current = routingControl;
+        // Store everything for cleanup
+        routingControlRef.current = {
+          _routes: [{ coordinates: routePath.map(p => ({ lat: p[0], lng: p[1] })) }],
+          _line: L.layerGroup([glowLine, routeLine]),
+          _plan: { _waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])] },
+          _markers: routeMarkers,
+          remove: function() {
+            map.removeLayer(glowLine);
+            map.removeLayer(routeLine);
+            routeMarkers.forEach(marker => map.removeLayer(marker));
+            if (this._cleanup) this._cleanup();
+          }
+        };
 
-      routingControl.on("routesfound", function (e) {
-        // Clear the timeout since we got a response
-        clearTimeout(routingTimeout);
+        // Add a tooltip showing the distance and time at the midpoint of the route
+        const routeMidPoint = routePath[Math.floor(routePath.length / 2)];
 
-        console.log("Route found:", e.routes[0]);
-        const distanceInKm = e.routes[0].summary.totalDistance / 1000;
-        const timeInSeconds = e.routes[0].summary.totalTime;
-        const timeInMinutes = Math.ceil(timeInSeconds / 60);
-
-        console.log("Actual route distance:", distanceInKm, "km, time:", timeInMinutes, "mins");
-
-        // Update the tooltip with actual route information
-        if (tooltipRef.current) {
-          map.removeLayer(tooltipRef.current);
-        }
-
-        const routeMidPoint = e.routes[0].coordinates[Math.floor(e.routes[0].coordinates.length / 2)];
-
-        // Create a new tooltip with updated information
-        const newTooltip = L.tooltip({
+        // Create a tooltip with the distance and time information
+        const tooltip = L.tooltip({
           permanent: true,
           direction: 'center',
           className: 'route-tooltip'
         })
-        .setLatLng([routeMidPoint.lat, routeMidPoint.lng])
-        .setContent(`<div class="route-info"><strong>${distanceInKm.toFixed(1)} km</strong> · ${timeInMinutes} mins</div>`)
+        .setLatLng(routeMidPoint)
+        .setContent(`<div class="route-info"><strong>${estimatedRoadDistance.toFixed(1)} km</strong> · ${estimatedTime} mins</div>`)
         .addTo(map);
 
-        // Update tooltip reference
-        tooltipRef.current = newTooltip;
+        // Store tooltip for cleanup
+        tooltipRef.current = tooltip;
 
-        // Call the callback with actual distance and time
-        onDistanceCalculated(distanceInKm, timeInMinutes);
-
-        // Remove the direct path once we have the actual route
-        if (routeLineRef.current) {
-          map.removeLayer(routeLineRef.current);
-          routeLineRef.current = null;
-        }
-
-        // Add custom markers for turns and instructions
-        const route = e.routes[0];
-        const turnMarkers = [];
-        if (route.instructions && route.instructions.length > 0) {
-          // Add markers for major turns (filter out some to avoid clutter)
-          route.instructions.forEach((instruction, idx) => {
-            // Only add markers for significant turns (not for straight segments)
-            if (instruction.type !== "WaypointReached" &&
-                instruction.type !== "Straight" &&
-                idx % 3 === 0) { // Add only every 3rd instruction to avoid clutter
-
-              const turnIcon = L.divIcon({
-                className: 'turn-icon',
-                html: `<div class="turn-marker"></div>`,
-                iconSize: [10, 10]
-              });
-
-              const marker = L.marker([instruction.coordinate.lat, instruction.coordinate.lng], { icon: turnIcon })
-                .addTo(map)
-                .bindTooltip(instruction.text, { direction: 'top' });
-
-              turnMarkers.push(marker);
-            }
-          });
-        }
-
-        // Update cleanup function to remove turn markers
-        routingControl._cleanup = () => {
-          turnMarkers.forEach(marker => {
-            try {
-              map.removeLayer(marker);
-            } catch (e) {
-              console.error("Error removing turn marker:", e);
-            }
-          });
-        };
+        // Call the distance callback with the estimated distance and time
+        onDistanceCalculated(estimatedRoadDistance, estimatedTime);
 
         // If requested, fit bounds to show the route
         if (fitBounds && animateFit) {
@@ -394,31 +437,52 @@ const RoutingMachine = ({
             duration: 1.5
           });
         }
-      });
 
-      routingControl.on("routingerror", function (e) {
-        // Clear the timeout since we got a response (even if it's an error)
+        // Clear the timeout since we're handling it ourselves
         clearTimeout(routingTimeout);
+      } catch (error) {
+        console.error("Error creating route:", error);
 
-        console.error("Routing error:", e.error);
-        // Keep the direct path and tooltip visible if routing fails
-        // Use the estimated distance and time we calculated earlier
-        console.log("Using estimated distance instead:", estimatedRoadDistance, "km, time:", estimatedTime, "mins");
+        // Fallback to simple direct line if advanced path fails
+        const routeLine = L.polyline([from, to], {
+          color: primary,
+          weight: 5,
+          opacity: 0.8,
+          dashArray: '10, 10',
+          className: 'route-line'
+        }).addTo(map);
 
-        // If requested, fit bounds to show the route
-        if (fitBounds) {
-          if (animateFit) {
-            map.flyToBounds([from, to], {
-              padding: [50, 50],
-              duration: 1.5
-            });
-          } else {
-            map.fitBounds([from, to], {
-              padding: [50, 50]
-            });
+        // Store for cleanup
+        routingControlRef.current = {
+          _line: routeLine,
+          remove: function() {
+            map.removeLayer(routeLine);
           }
-        }
-      });
+        };
+
+        // Add a simple tooltip
+        const midPoint = [
+          (from[0] + to[0]) / 2,
+          (from[1] + to[1]) / 2
+        ];
+
+        const tooltip = L.tooltip({
+          permanent: true,
+          direction: 'center',
+          className: 'route-tooltip'
+        })
+        .setLatLng(midPoint)
+        .setContent(`<div class="route-info"><strong>${estimatedRoadDistance.toFixed(1)} km</strong> · ${estimatedTime} mins</div>`)
+        .addTo(map);
+
+        tooltipRef.current = tooltip;
+
+        // Call the distance callback
+        onDistanceCalculated(estimatedRoadDistance, estimatedTime);
+
+        // Clear the timeout
+        clearTimeout(routingTimeout);
+      }
 
       return () => {
         // Clear the timeout if component unmounts
@@ -561,7 +625,84 @@ const MapView = () => {
   const [success, setSuccess] = useState(null);
   const [captainIcons, setCaptainIcons] = useState({});
   const [selectedCaptainId, setSelectedCaptainId] = useState(null);
+  const [vehicleIcons, setVehicleIcons] = useState({});
   const mapRef = useRef(null);
+
+  // Initialize vehicle icons
+  useEffect(() => {
+    try {
+      // Create icons for different vehicle types using direct SVG data URLs
+      const icons = {
+        car: L.icon({
+          iconUrl: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZGRiI+PHBhdGggZD0iTTIxLDEwLjVsLTEuMzgtNS40M0EzLDMsMCwwLDAsMTYuNzEsM0g3LjI5QTMsMywwLDAsMCw0LjM4LDUuMDdMMyxMTAuNWEzLDMsMCwwLDAsMyAzLjVoMXYzYTEsMSwwLDAsMCwxLDFoMmExLDEsMCwwLDAsMS0xVjE0aDR2M2ExLDEsMCwwLDAsMS0xVjE0aDFhMywzLDAsMCwwLDMtMy41Wk02LjgzLDYuMjRhMSwxLDAsMCwxLC45My0uNzRoOC40OGExLDEsMCwwLDEsLjkzLjc0TDE4LDEwSDZaIi8+PC9zdmc+",
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          popupAnchor: [0, -18],
+          className: "vehicle-marker car-marker animated"
+        }),
+        bike: L.icon({
+          iconUrl: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0ZGNDVBNiI+PHBhdGggZD0iTTE1LjUsOEExLjUsMS41LDAsMSwwLDE0LDYuNSwxLjUsMS41LDAsMCwwLDE1LjUsOFptLTguMjUsMEg5LjVsMS41LDQuNUw2LjUsMTdIMy43NUEuNzUuNzUsMCwwLDEsMywxNi4yNWEuNzUuNzUsMCwwLDEsLjc1LS43NUg1LjI1TDksMTEuMjUsNy4yNSw4Wm0xMC41LDEuNWgtMUwxNS41LDEzLjVsLTIuMjUtNEgxMkwxNSwxNGwtMi4yNSw0aDEuNWwyLjI1LTRMMTksMThoMS41YS43NS43NSwwLDAsMCwuNzUtLjc1LjcuNywwLDAsMC0uNzUtLjc1SDIwTDE3Ljc1LDkuNVoiLz48L3N2Zz4=",
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          popupAnchor: [0, -18],
+          className: "vehicle-marker bike-marker animated"
+        }),
+        auto: L.icon({
+          iconUrl: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0ZGQTUwMCI+PHBhdGggZD0iTTIxLDEwLjVsLTEuMzgtNS40M0EzLDMsMCwwLDAsMTYuNzEsM0g3LjI5QTMsMywwLDAsMCw0LjM4LDUuMDdMMyxMMS41YTMsMywwLDAsMCwzLDMuNWgxdjNhMSwxLDAsMCwwLDEsMWgyYTEsMSwwLDAsMCwxLTFWMTVoNHYzYTEsMSwwLDAsMCwxLTFWMTVoMWEzLDMsMCwwLDAsMy0zLjVabS0xNC4xNy00LjI2YTEsMSwwLDAsMSwuOTMtLjc0aDguNDhhMSwxLDAsMCwxLC45My43NEwxOCwxMUg2WiIvPjwvc3ZnPg==",
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          popupAnchor: [0, -18],
+          className: "vehicle-marker auto-marker animated"
+        }),
+        user: L.icon({
+          iconUrl: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZGRiI+PHBhdGggZD0iTTEyLDJBMTAsMTAsMCwxLDAsMjIsMTIsMTAsMTAsMCwwLDAsMTIsMlptMCwxOGE4LDgsMCwxLDEsOC04QTgsOCwwLDAsMSwxMiwyMFptNC0xMWExLDEsMCwxLDEtMS0xQTEsMSwwLDAsMSwxNiw5Wk04LDlhMSwxLDAsMSwxLTEtMUExLDEsMCwwLDEsOCw5Wm04LDRIMTJhMSwxLDAsMCwxLTEtMUgxMWExLDEsMCwwLDEtMS0xSDhhMSwxLDAsMCwwLTEsMSw1LDUsMCwwLDAsMTAsMCwxLDEsMCwwLDAtMS0xWiIvPjwvc3ZnPg==",
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+          popupAnchor: [0, -20],
+          className: "vehicle-marker user-marker animated"
+        }),
+        destination: L.icon({
+          iconUrl: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0ZGMDAwMCI+PHBhdGggZD0iTTEyLDJBMTAsMTAsMCwxLDAsMjIsMTIsMTAsMTAsMCwwLDAsMTIsMlptMCwxOGE4LDgsMCwxLDEsOC04QTgsOCwwLDAsMSwxMiwyMFptMC0xMmE0LDQsMCwxLDAsNCw0QTQsNCwwLDAsMCwxMiw4Wm0wLDZhMiwyLDAsMSwxLDItMkEyLDIsMCwwLDEsMTIsMTRaIi8+PC9zdmc+",
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+          popupAnchor: [0, -20],
+          className: "vehicle-marker destination-marker"
+        })
+      };
+
+      // Add more vehicle types
+      icons.sedan = icons.car;
+      icons.suv = icons.car;
+      icons.taxi = icons.car;
+      icons.motorcycle = icons.bike;
+      icons.scooter = icons.bike;
+      icons.rickshaw = icons.auto;
+
+      setVehicleIcons(icons);
+      console.log("Vehicle icons initialized successfully");
+    } catch (error) {
+      console.error("Error initializing vehicle icons:", error);
+
+      // Fallback to colored dots if icon creation fails
+      const fallbackIcons = {
+        car: createColoredDotIcon('#0066FF', 24),
+        bike: createColoredDotIcon('#FF45A6', 24),
+        auto: createColoredDotIcon('#FFA500', 24),
+        user: createColoredDotIcon('#0066FF', 28),
+        destination: createColoredDotIcon('#FF0000', 28)
+      };
+
+      // Add more vehicle types
+      fallbackIcons.sedan = fallbackIcons.car;
+      fallbackIcons.suv = fallbackIcons.car;
+      fallbackIcons.taxi = fallbackIcons.car;
+      fallbackIcons.motorcycle = fallbackIcons.bike;
+      fallbackIcons.scooter = fallbackIcons.bike;
+      fallbackIcons.rickshaw = fallbackIcons.auto;
+
+      setVehicleIcons(fallbackIcons);
+    }
+  }, []);
 
   // Get current location
   useEffect(() => {
@@ -616,8 +757,25 @@ const MapView = () => {
           const icons = {};
           nearbyCaptainsData.forEach(captain => {
             if (captain.currentLocation) {
-              // Use bike icon for captains
-              icons[captain.id] = createCustomIcon(bikeIconUrl, [32, 32]);
+              // Use appropriate vehicle icon based on captain's vehicle type
+              const vehicleType = captain.vehicleType?.toLowerCase() || 'bike';
+
+              // Use the pre-created vehicle icons
+              if (vehicleIcons[vehicleType]) {
+                icons[captain.id] = vehicleIcons[vehicleType];
+              } else {
+                // Fallback to one of the main types if specific type not found
+                if (vehicleType.includes('car') || vehicleType.includes('sedan') || vehicleType.includes('suv')) {
+                  icons[captain.id] = vehicleIcons.car;
+                } else if (vehicleType.includes('bike') || vehicleType.includes('cycle') || vehicleType.includes('moto')) {
+                  icons[captain.id] = vehicleIcons.bike;
+                } else if (vehicleType.includes('auto') || vehicleType.includes('rick')) {
+                  icons[captain.id] = vehicleIcons.auto;
+                } else {
+                  // Default to bike if no match
+                  icons[captain.id] = vehicleIcons.bike;
+                }
+              }
             }
           });
           setCaptainIcons(icons);
@@ -780,15 +938,15 @@ const MapView = () => {
                 Trip Details
               </h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
+                <div className="bg-black bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
                   <p className="text-xs text-gray-300 mb-1 uppercase tracking-wider">Distance</p>
                   <p className="text-xl font-semibold text-white">{distance} <span className="text-sm">km</span></p>
                 </div>
-                <div className="bg-white bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
+                <div className="bg-black bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
                   <p className="text-xs text-gray-300 mb-1 uppercase tracking-wider">Fare</p>
-                  <p className="text-xl font-semibold text-secondary">₹{fare}</p>
+                  <p className="text-xl text-white font-semibold text-secondary">₹{fare}</p>
                 </div>
-                <div className="bg-white bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
+                <div className="bg-black bg-opacity-10 p-4 rounded-lg text-center border border-gray-700 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1">
                   <p className="text-xs text-gray-300 mb-1 uppercase tracking-wider">Time</p>
                   <p className="text-xl font-semibold text-white">{estimatedTime || Math.ceil(distance * 3)} <span className="text-sm">mins</span></p>
                 </div>
@@ -838,7 +996,7 @@ const MapView = () => {
 
           {/* Error and Success Messages */}
           {error && (
-            <AnimatedWrapper delay={0.1} className="bg-red-900 bg-opacity-30 border border-red-500 text-red-300 p-4 rounded-lg mt-4 flex items-start">
+            <AnimatedWrapper delay={0.1} className="bg-red-900 bg-opacity-30 border border-red-500 text-white p-4 rounded-lg mt-4 flex items-start">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -903,7 +1061,7 @@ const MapView = () => {
                 {nearbyCaptains.map((captain) => (
                   <div
                     key={captain.id}
-                    className={`flex items-center bg-white bg-opacity-5 p-3 rounded-lg cursor-pointer transition-all duration-300 hover:bg-opacity-10 ${selectedCaptainId === captain.id ? 'border-2 border-secondary shadow-lg' : 'border border-gray-700'}`}
+                    className={`flex items-center bg-black bg-opacity-5 p-3 rounded-lg cursor-pointer transition-all duration-300 hover:bg-opacity-10 ${selectedCaptainId === captain.id ? 'border-2 border-secondary shadow-lg' : 'border border-gray-700'}`}
                     onClick={() => {
                       setSelectedCaptainId(captain.id);
                       // Add a little animation when selecting
@@ -930,11 +1088,11 @@ const MapView = () => {
                       </div>
                     </div>
                     {selectedCaptainId === captain.id ? (
-                      <div className="bg-secondary text-white text-xs px-3 py-1 rounded-full shadow-md">
+                      <div className="bg-secondary text-green-500 text-base px-3 py-1 rounded-full shadow-md">
                         Selected
                       </div>
                     ) : (
-                      <div className="bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded-full opacity-60">
+                      <div className="bg-gray-700 text-gray-300 text-base px-3 py-1 rounded-full opacity-60">
                         Select
                       </div>
                     )}
@@ -978,16 +1136,37 @@ const MapView = () => {
               <div className="absolute bottom-4 left-4 z-10 bg-black bg-opacity-80 p-3 rounded-lg shadow-lg border border-gray-700">
                 <div className="text-xs text-white mb-2 font-medium">Map Legend:</div>
                 <div className="flex items-center mb-1">
-                  <div className="w-3 h-3 rounded-full bg-secondary mr-2 border border-white"></div>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"/>
+                    <path d="M12,6a3,3,0,1,0,3,3A3,3,0,0,0,12,6Zm0,4a1,1,0,1,1,1-1A1,1,0,0,1,12,10Z"/>
+                    <path d="M12,12a5,5,0,0,0-5,5h10A5,5,0,0,0,12,12Z"/>
+                  </svg>
                   <span className="text-xs text-white">Your Location</span>
                 </div>
                 <div className="flex items-center mb-1">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mr-2 border border-white"></div>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"/>
+                    <path d="M12,8a4,4,0,1,0,4,4A4,4,0,0,0,12,8Zm0,6a2,2,0,1,1,2-2A2,2,0,0,1,12,14Z"/>
+                  </svg>
                   <span className="text-xs text-white">Destination</span>
                 </div>
+                <div className="flex items-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-pink-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.5,8A1.5,1.5,0,1,0,14,6.5,1.5,1.5,0,0,0,15.5,8Zm-8.25,0H9.5l1.5,4.5L6.5,17H3.75A.75.75,0,0,1,3,16.25a.75.75,0,0,1,.75-.75H5.25L9,11.25,7.25,8Zm10.5,1.5h-1L15.5,13.5l-2.25-4H12L15,14l-2.25,4h1.5l2.25-4L19,18h1.5a.75.75,0,0,0,.75-.75.7.7,0,0,0-.75-.75H20L17.75,9.5Z"/>
+                  </svg>
+                  <span className="text-xs text-white">Bike Captains</span>
+                </div>
+                <div className="flex items-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21,10.5l-1.38-5.43A3,3,0,0,0,16.71,3H7.29A3,3,0,0,0,4.38,5.07L3,10.5a3,3,0,0,0,3,3.5h1v3a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V14h4v3a1,1,0,0,0,1-1V14h1a3,3,0,0,0,3-3.5ZM6.83,6.24a1,1,0,0,1,.93-.74h8.48a1,1,0,0,1,.93.74L18,10H6Z"/>
+                  </svg>
+                  <span className="text-xs text-white">Car Captains</span>
+                </div>
                 <div className="flex items-center">
-                  <img src={bikeIconUrl} alt="Captain" className="w-4 h-4 mr-2" />
-                  <span className="text-xs text-white">Available Captains</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21,10.5l-1.38-5.43A3,3,0,0,0,16.71,3H7.29A3,3,0,0,0,4.38,5.07L3,11.5a3,3,0,0,0,3,3.5h1v3a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V15h4v3a1,1,0,0,0,1-1V15h1a3,3,0,0,0,3-3.5Zm-14.17-4.26a1,1,0,0,1,.93-.74h8.48a1,1,0,0,1,.93.74L18,11H6Z"/>
+                  </svg>
+                  <span className="text-xs text-white">Auto Captains</span>
                 </div>
               </div>
               <MapContainer
@@ -1006,13 +1185,20 @@ const MapView = () => {
                   <>
                     <Marker
                       position={pickup}
-                      icon={createColoredDotIcon('#FF1493', 16)}
+                      icon={vehicleIcons.user || createColoredDotIcon('#FF1493', 16)}
                     >
-                      <Popup>
-                        <div className="font-medium mb-1">
-                          Pickup Location
+                      <Popup className="vehicle-popup">
+                        <div className="vehicle-popup-header">
+                          <div className="vehicle-popup-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0066FF">
+                              <path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"/>
+                              <path d="M12,6a3,3,0,1,0,3,3A3,3,0,0,0,12,6Zm0,4a1,1,0,1,1,1-1A1,1,0,0,1,12,10Z"/>
+                              <path d="M12,12a5,5,0,0,0-5,5h10A5,5,0,0,0,12,12Z"/>
+                            </svg>
+                          </div>
+                          <div className="vehicle-popup-title">Pickup Location</div>
                         </div>
-                        <div className="text-sm">
+                        <div className="vehicle-popup-content">
                           {pickupAddress || "Your Location"}
                         </div>
                       </Popup>
@@ -1029,13 +1215,19 @@ const MapView = () => {
                 {drop && (
                   <Marker
                     position={drop}
-                    icon={createColoredDotIcon('#4CAF50', 16)}
+                    icon={vehicleIcons.destination || createColoredDotIcon('#4CAF50', 16)}
                   >
-                    <Popup>
-                      <div className="font-medium mb-1">
-                        Destination
+                    <Popup className="vehicle-popup">
+                      <div className="vehicle-popup-header">
+                        <div className="vehicle-popup-icon">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF0000">
+                            <path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"/>
+                            <path d="M12,8a4,4,0,1,0,4,4A4,4,0,0,0,12,8Zm0,6a2,2,0,1,1,2-2A2,2,0,0,1,12,14Z"/>
+                          </svg>
+                        </div>
+                        <div className="vehicle-popup-title">Destination</div>
                       </div>
-                      <div className="text-sm">
+                      <div className="vehicle-popup-content">
                         {dropAddress || "Drop Location"}
                       </div>
                     </Popup>
@@ -1049,12 +1241,37 @@ const MapView = () => {
                       key={captain.id}
                       position={captain.currentLocation}
                       icon={captainIcons[captain.id]}
+                      className={selectedCaptainId === captain.id ? 'active' : ''}
                     >
-                      <Popup>
-                        <div>
-                          <div className="font-medium mb-1">{captain.name}</div>
-                          <div className="text-sm">{captain.vehicleModel} ({captain.vehicleNumber})</div>
-                          <div className="text-sm mt-1">Rating: {captain.rating?.toFixed(1) || "New"} ★</div>
+                      <Popup className="vehicle-popup">
+                        <div className="vehicle-popup-header">
+                          <div className="vehicle-popup-icon">
+                            {captain.vehicleType?.toLowerCase() === 'car' ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0066FF">
+                                <path d="M21,10.5l-1.38-5.43A3,3,0,0,0,16.71,3H7.29A3,3,0,0,0,4.38,5.07L3,10.5a3,3,0,0,0,3,3.5h1v3a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V14h4v3a1,1,0,0,0,1-1V14h1a3,3,0,0,0,3-3.5ZM6.83,6.24a1,1,0,0,1,.93-.74h8.48a1,1,0,0,1,.93.74L18,10H6Z"/>
+                              </svg>
+                            ) : captain.vehicleType?.toLowerCase() === 'auto' ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FFA500">
+                                <path d="M21,10.5l-1.38-5.43A3,3,0,0,0,16.71,3H7.29A3,3,0,0,0,4.38,5.07L3,11.5a3,3,0,0,0,3,3.5h1v3a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V15h4v3a1,1,0,0,0,1-1V15h1a3,3,0,0,0,3-3.5Zm-14.17-4.26a1,1,0,0,1,.93-.74h8.48a1,1,0,0,1,.93.74L18,11H6Z"/>
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF45A6">
+                                <path d="M15.5,8A1.5,1.5,0,1,0,14,6.5,1.5,1.5,0,0,0,15.5,8Zm-8.25,0H9.5l1.5,4.5L6.5,17H3.75A.75.75,0,0,1,3,16.25a.75.75,0,0,1,.75-.75H5.25L9,11.25,7.25,8Zm10.5,1.5h-1L15.5,13.5l-2.25-4H12L15,14l-2.25,4h1.5l2.25-4L19,18h1.5a.75.75,0,0,0,.75-.75.7.7,0,0,0-.75-.75H20L17.75,9.5Z"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div className="vehicle-popup-title">{captain.name}</div>
+                        </div>
+                        <div className="vehicle-popup-content">
+                          <div>{captain.vehicleModel} ({captain.vehicleNumber})</div>
+                          <div className="mt-1">
+                            <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
+                              Rating: {captain.rating?.toFixed(1) || "New"} ★
+                            </span>
+                          </div>
+                        </div>
+                        <div className="vehicle-popup-footer">
+                          {captain.isOnline ? 'Available Now' : 'Currently Busy'}
                         </div>
                       </Popup>
                     </Marker>
@@ -1099,7 +1316,7 @@ const MapView = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }

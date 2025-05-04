@@ -7,6 +7,7 @@ gsap.registerPlugin(ScrollTrigger);
 const CaptainStatCard = ({
   title,
   value,
+  subtitle,
   icon,
   color = 'secondary',
   trend = null, // 'up', 'down', or null
@@ -214,26 +215,34 @@ const CaptainStatCard = ({
         )}
       </div>
 
-      <div className="flex items-end">
-        <div ref={valueRef} className={`text-3xl font-bold ${colorClasses[color]}`}>
-          {value}
+      <div className="flex flex-col">
+        <div className="flex items-end">
+          <div ref={valueRef} className={`text-3xl font-bold ${colorClasses[color]}`}>
+            {value}
+          </div>
+
+          {trend && (
+            <div
+              ref={trendRef}
+              className={`ml-2 mb-1 flex items-center ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}
+            >
+              {trend === 'up' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
+                </svg>
+              )}
+              <span className="text-xs ml-1">{trendValue}</span>
+            </div>
+          )}
         </div>
 
-        {trend && (
-          <div
-            ref={trendRef}
-            className={`ml-2 mb-1 flex items-center ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}
-          >
-            {trend === 'up' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
-              </svg>
-            )}
-            <span className="text-xs ml-1">{trendValue}</span>
+        {subtitle && (
+          <div className="text-xs text-gray-400 mt-1">
+            {subtitle}
           </div>
         )}
       </div>

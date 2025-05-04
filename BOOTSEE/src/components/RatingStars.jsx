@@ -40,7 +40,7 @@ const RatingStars = ({ initialRating = 0, totalRatings = 0, onRatingChange, read
             className={`${starSizeClass} ${readOnly ? "cursor-default" : "cursor-pointer"} ${
               (hoverRating || rating) >= star
                 ? "text-yellow-400"
-                : "text-gray-400"
+                : "text-gray-300"
             }`}
             onClick={() => handleClick(star)}
             onMouseEnter={() => handleMouseEnter(star)}
@@ -51,7 +51,7 @@ const RatingStars = ({ initialRating = 0, totalRatings = 0, onRatingChange, read
         ))}
       </div>
       {totalRatings > 0 && readOnly && (
-        <span className="text-sm text-gray-400 mt-1">
+        <span className="text-sm text-white mt-1">
           {initialRating.toFixed(1)} ({totalRatings} {totalRatings === 1 ? "rating" : "ratings"})
         </span>
       )}

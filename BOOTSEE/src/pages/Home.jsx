@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import MapView from "../components/MapView";
 import AnimatedWrapper from "../components/AnimatedWrapper";
-import EnhancedHeroBackground from "../components/EnhancedHeroBackground";
+import SimpleHeroBackground from "../components/SimpleHeroBackground";
 import ParticleBackground from "../components/ParticleBackground";
 import AnimatedFeature from "../components/AnimatedFeature";
 import FloatingElement from "../components/FloatingElement";
@@ -244,7 +244,7 @@ const Home = () => {
 
       {/* Hero Section */}
       <div ref={heroRef} className="relative bg-gradient-to-r from-gray-900 to-black py-24 px-4 border-b border-gray-800 overflow-hidden parallax-bg">
-        <EnhancedHeroBackground />
+        <SimpleHeroBackground />
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between relative z-10">
             <div className="md:w-1/2 mb-8 md:mb-0">
@@ -339,15 +339,15 @@ const Home = () => {
                   </svg>
                 </button>
               </div>
-              <div className="p-6 border-b border-gray-700">
-                <h2 className="text-2xl font-bold text-white flex items-center">
+              <div className="p-6 border-b border-gray-700 bg-black bg-opacity-70">
+                <h2 className="text-2xl font-bold text-secondary flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   Book Your Ride
                 </h2>
-                <p className="text-gray-400 ml-8">Enter your pickup and destination details</p>
+                <p className="text-white ml-8">Enter your pickup and destination details</p>
               </div>
               <div className="p-6">
                 <MapView />
@@ -361,8 +361,8 @@ const Home = () => {
           <AnimatedWrapper delay={0.2}>
           {/* Recent Rides */}
           <Interactive3DCard className="overflow-hidden" depth={20} sensitivity={15}>
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-2xl font-bold text-white flex items-center">
+            <div className="p-6 border-b border-gray-700 bg-black bg-opacity-70">
+              <h2 className="text-2xl font-bold text-secondary flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -373,18 +373,18 @@ const Home = () => {
               {recentRides.length > 0 ? (
                 <div className="space-y-4">
                   {recentRides.map(ride => (
-                    <div key={ride.id} className="bg-black bg-opacity-40 border border-gray-700 rounded-lg p-4 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
+                    <div key={ride.id} className="bg-black bg-opacity-70 border border-gray-800 rounded-lg p-4 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center">
                             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${ride.status === "completed" ? "bg-green-500" : ride.status === "cancelled" ? "bg-red-500" : ride.status === "in_progress" ? "bg-blue-500" : "bg-yellow-500"}`}></span>
-                            <p className="font-medium">{ride.pickupAddress || "Unknown pickup"} → {ride.dropAddress || "Unknown destination"}</p>
+                            <p className="font-medium text-white">{ride.pickupAddress || "Unknown pickup"} → {ride.dropAddress || "Unknown destination"}</p>
                           </div>
-                          <p className="text-sm text-gray-400 mt-1">{formatDate(ride.createdAt)}</p>
+                          <p className="text-sm text-white mt-1">{formatDate(ride.createdAt)}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-white font-bold bg-secondary px-2 py-1 rounded-md mb-1">₹{ride.fare?.toLocaleString('en-IN', { maximumFractionDigits: 0 }) || 'N/A'}</p>
-                          <div className="flex items-center justify-end text-sm bg-gray-700 text-white px-2 py-1 rounded-md">
+                          <div className="flex items-center justify-end text-sm bg-secondary bg-opacity-20 text-white px-2 py-1 rounded-md border border-secondary border-opacity-30">
                             <span>{ride.distance || 'N/A'} km</span>
                             <span className="mx-1">•</span>
                             <span>{ride.estimatedTime || Math.ceil((ride.distance || 0) * 3)} mins</span>
@@ -395,11 +395,11 @@ const Home = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 bg-black bg-opacity-30 rounded-lg border border-gray-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="text-center py-8 bg-black bg-opacity-70 rounded-lg border border-gray-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-secondary mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
-                  <p className="text-gray-400 mb-4">No recent rides found</p>
+                  <p className="text-white mb-4">No recent rides found</p>
                   <button
                     onClick={() => setShowRideForm(true)}
                     className="mt-2 bg-gradient-to-r from-secondary to-pink-600 text-white px-6 py-3 rounded-lg font-medium hover:from-pink-600 hover:to-secondary transition duration-300 shadow-lg transform hover:-translate-y-1 hover:shadow-xl flex items-center mx-auto"
@@ -412,15 +412,25 @@ const Home = () => {
                 </div>
               )}
               {recentRides.length > 0 && (
-                <div className="mt-6 text-center">
+                <div className="mt-6 flex flex-col sm:flex-row justify-center gap-4">
                   <button
                     onClick={() => navigate("/ridehistory")}
-                    className="bg-white bg-opacity-10 text-secondary hover:bg-opacity-20 px-6 py-2 rounded-lg transition duration-300 flex items-center mx-auto"
+                    className="bg-white bg-opacity-10 text-secondary hover:bg-opacity-20 px-6 py-2 rounded-lg transition duration-300 flex items-center justify-center"
                   >
                     <span>View All Rides</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/payment")}
+                    className="bg-secondary bg-opacity-10 text-white hover:bg-opacity-20 px-6 py-2 rounded-lg transition duration-300 flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    <span>Scan & Pay</span>
                   </button>
                 </div>
               )}
@@ -431,8 +441,8 @@ const Home = () => {
           <AnimatedWrapper delay={0.4}>
           {/* Nearby Captains */}
           <Interactive3DCard className="overflow-hidden" depth={20} sensitivity={15}>
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-2xl font-bold text-white flex items-center">
+            <div className="p-6 border-b border-gray-700 bg-black bg-opacity-70">
+              <h2 className="text-2xl font-bold text-secondary flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -441,23 +451,23 @@ const Home = () => {
             </div>
             <div className="p-6">
               {loading ? (
-                <div className="text-center py-8 bg-black bg-opacity-30 rounded-lg border border-gray-700">
+                <div className="text-center py-8 bg-black bg-opacity-70 rounded-lg border border-gray-800">
                   <svg className="animate-spin h-10 w-10 text-secondary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <p className="text-gray-400">Loading captains...</p>
+                  <p className="text-white">Loading captains...</p>
                 </div>
               ) : nearbyCaptains.length > 0 ? (
                 <div className="space-y-4">
                   {nearbyCaptains.map(captain => (
-                    <div key={captain.id} className="flex items-center bg-black bg-opacity-40 border border-gray-700 rounded-lg p-4 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
+                    <div key={captain.id} className="flex items-center bg-black bg-opacity-70 border border-gray-800 rounded-lg p-4 hover:border-secondary transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                       <div className="w-12 h-12 bg-gradient-to-br from-secondary to-pink-600 rounded-full flex items-center justify-center text-xl font-bold text-white mr-4 shadow-lg">
                         {captain.name?.charAt(0) || "C"}
                       </div>
                       <div>
-                        <p className="font-medium">{captain.name}</p>
-                        <div className="flex items-center text-sm text-gray-400">
+                        <p className="font-medium text-white">{captain.name}</p>
+                        <div className="flex items-center text-sm text-white">
                           <span className="flex items-center">
                             <span className="text-yellow-400 mr-1">★</span>
                             {captain.rating?.toFixed(1) || "New"}
@@ -470,12 +480,12 @@ const Home = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 bg-black bg-opacity-30 rounded-lg border border-gray-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="text-center py-8 bg-black bg-opacity-70 rounded-lg border border-gray-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-secondary mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <p className="text-gray-400 mb-2">No captains available nearby</p>
-                  <p className="text-sm text-gray-500">Try again in a few minutes</p>
+                  <p className="text-white mb-2">No captains available nearby</p>
+                  <p className="text-sm text-secondary">Try again in a few minutes</p>
                 </div>
               )}
             </div>
@@ -488,32 +498,32 @@ const Home = () => {
       <div ref={statsRef} className="relative bg-gradient-to-br from-gray-800 to-black py-16 px-4 mt-12 border-t border-gray-800 overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="stat-item bg-black bg-opacity-50 p-6 rounded-xl border border-gray-700 text-center transform transition-all hover:scale-105 hover:border-secondary">
+            <div className="stat-item bg-black bg-opacity-70 p-6 rounded-xl border border-gray-800 text-center transform transition-all hover:scale-105 hover:border-secondary">
               <div className="text-4xl font-bold text-secondary mb-2">
                 <AnimatedCounter end={5000} suffix="+" triggerElement={statsRef.current} />
               </div>
-              <p className="text-gray-300">Happy Riders</p>
+              <p className="text-white">Happy Riders</p>
             </div>
 
-            <div className="stat-item bg-black bg-opacity-50 p-6 rounded-xl border border-gray-700 text-center transform transition-all hover:scale-105 hover:border-secondary">
+            <div className="stat-item bg-black bg-opacity-70 p-6 rounded-xl border border-gray-800 text-center transform transition-all hover:scale-105 hover:border-secondary">
               <div className="text-4xl font-bold text-secondary mb-2">
                 <AnimatedCounter end={500} suffix="+" triggerElement={statsRef.current} />
               </div>
-              <p className="text-gray-300">Expert Captains</p>
+              <p className="text-white">Expert Captains</p>
             </div>
 
-            <div className="stat-item bg-black bg-opacity-50 p-6 rounded-xl border border-gray-700 text-center transform transition-all hover:scale-105 hover:border-secondary">
+            <div className="stat-item bg-black bg-opacity-70 p-6 rounded-xl border border-gray-800 text-center transform transition-all hover:scale-105 hover:border-secondary">
               <div className="text-4xl font-bold text-secondary mb-2">
                 <AnimatedCounter end={50000} suffix="+" triggerElement={statsRef.current} />
               </div>
-              <p className="text-gray-300">Rides Completed</p>
+              <p className="text-white">Rides Completed</p>
             </div>
 
-            <div className="stat-item bg-black bg-opacity-50 p-6 rounded-xl border border-gray-700 text-center transform transition-all hover:scale-105 hover:border-secondary">
+            <div className="stat-item bg-black bg-opacity-70 p-6 rounded-xl border border-gray-800 text-center transform transition-all hover:scale-105 hover:border-secondary">
               <div className="text-4xl font-bold text-secondary mb-2">
                 <AnimatedCounter end={20} suffix=" Cities" triggerElement={statsRef.current} />
               </div>
-              <p className="text-gray-300">And Growing</p>
+              <p className="text-white">And Growing</p>
             </div>
           </div>
         </div>
@@ -533,7 +543,7 @@ const Home = () => {
               Why Choose <span ref={addToLogoTextRefs} className="text-secondary animated-logo-text inline-block">SAFE WINGS</span>
               <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-secondary to-transparent"></div>
             </h2>
-            <p className="text-gray-300 text-xl max-w-2xl mx-auto mt-4">Experience the best ride-sharing service with premium features and reliable captains</p>
+            <p className="text-white text-xl max-w-2xl mx-auto mt-4">Experience the best ride-sharing service with premium features and reliable captains</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -606,6 +616,16 @@ const Home = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
               Book a Ride Now
+            </button>
+
+            <button
+              onClick={() => navigate("/payment")}
+              className="bg-black bg-opacity-30 text-white border-2 border-white px-8 py-4 rounded-xl font-medium hover:bg-white hover:text-secondary transition duration-300 shadow-lg transform hover:-translate-y-1 hover:shadow-xl flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              Scan & Pay
             </button>
 
             <button

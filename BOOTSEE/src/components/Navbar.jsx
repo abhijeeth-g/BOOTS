@@ -69,8 +69,26 @@ const Navbar = () => {
                 >
                   Ride History
                 </Link>
+                <Link
+                  to="/upi-qr-code"
+                  className={`px-3 py-2 rounded-md text-lg font-medium ${location.pathname === "/upi-qr-code" ? "bg-secondary text-accent" : "text-accent hover:bg-dark-primary"}`}
+                >
+                  Pay via QR
+                </Link>
+                <Link
+                  to="/test-storage"
+                  className={`px-3 py-2 rounded-md text-lg font-medium ${location.pathname === "/test-storage" ? "bg-secondary text-accent" : "text-accent hover:bg-dark-primary"}`}
+                >
+                  Test Storage
+                </Link>
                 {user ? (
                   <>
+                    <Link
+                      to="/profile"
+                      className={`px-3 py-2 rounded-md text-lg font-medium ${location.pathname === "/profile" ? "bg-secondary text-accent" : "text-accent hover:bg-dark-primary"}`}
+                    >
+                      Profile
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="text-accent px-3 py-2 rounded-md text-lg font-medium hover:bg-dark-primary"
@@ -114,8 +132,20 @@ const Navbar = () => {
           >
             Ride History
           </Link>
+          <Link
+            to="/upi-qr-code"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${location.pathname === "/upi-qr-code" ? "bg-secondary text-accent" : "text-accent hover:bg-dark-primary"}`}
+          >
+            Pay via QR
+          </Link>
           {user ? (
             <>
+              <Link
+                to="/profile"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${location.pathname === "/profile" ? "bg-secondary text-accent" : "text-accent hover:bg-dark-primary"}`}
+              >
+                Profile
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-accent block px-3 py-2 rounded-md text-base font-medium hover:bg-dark-primary w-full text-left"

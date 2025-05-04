@@ -148,12 +148,12 @@ const CaptainCard = ({
   return (
     <div
       ref={cardRef}
-      className={`bg-gradient-to-br from-gray-900 to-black rounded-xl shadow-lg border border-gray-700 overflow-hidden transition-all duration-300 ${className}`}
+      className={`bg-gradient-to-br from-gray-900 to-black rounded-xl shadow-lg border border-gray-800 overflow-hidden transition-all duration-300 ${className}`}
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-        <h2 ref={titleRef} className="text-xl font-bold text-white flex items-center">
+      <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-black bg-opacity-50">
+        <h2 ref={titleRef} className="text-xl font-bold text-secondary flex items-center">
           {icon && (
             <span ref={iconRef} className="inline-block mr-2 text-secondary">
               {icon}

@@ -19,6 +19,7 @@ import RideStatistics from "../../components/captain/RideStatistics";
 import CaptainDashboardBackground from "../../components/CaptainDashboardBackground";
 import CaptainCard from "../../components/CaptainCard";
 import CaptainStatCard from "../../components/CaptainStatCard";
+import CaptainEarningsCalculator from "../../components/captain/CaptainEarningsCalculator";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { toast } from "react-toastify";
@@ -484,6 +485,12 @@ const CaptainDashboard = () => {
       // Get the ride fare
       const rideFare = activeRide.fare || 0;
 
+      // Calculate company commission (10%)
+      const companyCommission = rideFare * 0.1;
+
+      // Calculate captain's actual earnings (90%)
+      const captainEarnings = rideFare - companyCommission;
+
       // Get current captain data for earnings update
       const captainDocRef = doc(db, "captains", user.uid);
       const captainDocSnap = await getDoc(captainDocRef);
@@ -494,30 +501,40 @@ const CaptainDashboard = () => {
 
       const captainData = captainDocSnap.data();
 
-      // Calculate new earnings values
-      const todayEarnings = (captainData.todayEarnings || 0) + rideFare;
-      const totalEarnings = (captainData.totalEarnings || 0) + rideFare;
+      // Calculate new earnings values (using captain's actual earnings after commission)
+      const todayEarnings = (captainData.todayEarnings || 0) + captainEarnings;
+      const totalEarnings = (captainData.totalEarnings || 0) + captainEarnings;
       const totalRides = (captainData.totalRides || 0) + 1;
       const todayRides = (captainData.todayRides || 0) + 1;
+
+      // Track gross earnings (before commission) for reporting
+      const todayGrossEarnings = (captainData.todayGrossEarnings || 0) + rideFare;
+      const totalGrossEarnings = (captainData.totalGrossEarnings || 0) + rideFare;
 
       // Update ride status in Firestore
       await updateDoc(doc(db, "rides", activeRide.id), {
         status: "completed",
         completedAt: serverTimestamp(),
-        finalFare: rideFare // Store the final fare in case it was adjusted
+        finalFare: rideFare, // Total fare paid by user
+        captainEarnings: captainEarnings, // Captain's earnings after commission
+        companyCommission: companyCommission // Company's commission
       });
 
       // Update captain data with new earnings and ride count
       await updateDoc(captainDocRef, {
         activeRide: null,
         isAvailable: true,
-        todayEarnings: todayEarnings,
-        totalEarnings: totalEarnings,
+        todayEarnings: todayEarnings, // Net earnings after commission
+        totalEarnings: totalEarnings, // Net earnings after commission
+        todayGrossEarnings: todayGrossEarnings, // Gross earnings before commission
+        totalGrossEarnings: totalGrossEarnings, // Gross earnings before commission
         totalRides: totalRides,
         todayRides: todayRides,
         lastCompletedRide: {
           id: activeRide.id,
-          fare: rideFare,
+          fare: rideFare, // Total fare
+          captainEarnings: captainEarnings, // Captain's earnings after commission
+          companyCommission: companyCommission, // Company's commission
           completedAt: serverTimestamp(),
           from: activeRide.pickupAddress,
           to: activeRide.dropAddress,
@@ -528,8 +545,14 @@ const CaptainDashboard = () => {
       // Clear active ride from state
       setActiveRide(null);
 
-      // Show success message with earnings
-      toast.success(`Ride completed! Earned ₹${rideFare.toLocaleString('en-IN')}`);
+      // Show success message with earnings breakdown
+      toast.success(
+        <div>
+          <p>Ride completed!</p>
+          <p className="text-xs mt-1">Total: ₹{rideFare.toLocaleString('en-IN')}</p>
+          <p className="text-xs">Your earnings: ₹{captainEarnings.toLocaleString('en-IN')}</p>
+        </div>
+      );
 
       // Refresh captain data to show updated earnings
       fetchCaptainData();
@@ -732,8 +755,12 @@ const CaptainDashboard = () => {
             <div className="bg-gray-800 bg-opacity-50 rounded-lg p-3 border border-gray-700">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs text-gray-400">Today's Earnings</p>
+                  <p className="text-xs text-gray-400">Today's Earnings (After 10% Commission)</p>
                   <p className="text-xl font-bold text-white earnings-value">₹{(captainData?.todayEarnings || 0).toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <span className="text-gray-400">Gross: </span>
+                    ₹{(captainData?.todayGrossEarnings || 0).toLocaleString('en-IN')}
+                  </p>
                 </div>
                 <div className="bg-secondary bg-opacity-20 p-2 rounded-lg">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1240,21 +1267,21 @@ const CaptainDashboard = () => {
                 </div>
                 <div className="stat-item">
                   <CaptainStatCard
-                    title="Today's Earnings"
+                    title="Today's Earnings (After Commission)"
                     value={`₹${(captainData?.todayEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    subtitle={`Gross: ₹${(captainData?.todayGrossEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>}
                     color="green"
-                    trend="up"
-                    trendValue="+12%"
                     delay={0.3}
                   />
                 </div>
                 <div className="stat-item">
                   <CaptainStatCard
-                    title="Total Earnings"
+                    title="Total Earnings (After Commission)"
                     value={`₹${(captainData?.totalEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    subtitle={`Gross: ₹${(captainData?.totalGrossEarnings || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>}
@@ -1262,6 +1289,15 @@ const CaptainDashboard = () => {
                     delay={0.4}
                   />
                 </div>
+              </div>
+
+              {/* Earnings Breakdown */}
+              <div className="mt-4">
+                <CaptainEarningsCalculator
+                  totalAmount={captainData?.todayGrossEarnings || 0}
+                  commissionPercentage={10}
+                  showDetails={true}
+                />
               </div>
             </CaptainCard>
           </div>

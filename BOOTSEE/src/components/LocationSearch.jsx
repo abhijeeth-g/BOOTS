@@ -194,7 +194,7 @@ const LocationSearch = ({ label, onSelect, selected, placeholder }) => {
             setError("Geolocation is not supported by your browser.");
           }
         }}
-        className="mt-2 text-secondary text-sm flex items-center hover:underline hover:text-white transition-colors duration-200"
+        className="mt-2 text-secondary text-sm flex items-center hover:underlineed text-amber-50 transition-colors duration-200"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

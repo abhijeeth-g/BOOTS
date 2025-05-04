@@ -1,14 +1,40 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db, storage } from "../../firebase/config";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import RatingStars from "../../components/RatingStars";
+import DocumentUpload from "../../components/DocumentUpload";
+import ImprovedFaceCapture from "../../components/ImprovedFaceCapture";
+import { toast } from "react-toastify";
 
 const CaptainProfile = () => {
-  const { user } = useAuth();
+  const { user, updateUserPassword } = useAuth();
   const [captainData, setCaptainData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showLicenseVerification, setShowLicenseVerification] = useState(false);
+  const [showAadharVerification, setShowAadharVerification] = useState(false);
+  const [licenseVerified, setLicenseVerified] = useState(false);
+  const [licenseData, setLicenseData] = useState(null);
+  const [licenseUrl, setLicenseUrl] = useState("");
+  const [aadharVerified, setAadharVerified] = useState(false);
+  const [aadharData, setAadharData] = useState(null);
+  const [aadharUrl, setAadharUrl] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState("");
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+
+  // Password change states
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",

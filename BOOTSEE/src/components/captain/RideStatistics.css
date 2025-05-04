@@ -1,173 +1,161 @@
 .ride-statistics {
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
+  padding: 20px;
+  color: #fff;
+  width: 100%;
+  max-width: 800px;
+  margin: auto;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
 }
 
 .stats-tabs {
   display: flex;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .tab-button {
-  flex: 1;
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 12px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  background: transparent;
+  border: 2px solid #fff;
+  color: #fff;
+  padding: 10px 20px;
+  margin: 0 10px;
+  border-radius: 8px;
+  font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
+  transition: background 0.3s, color 0.3s;
 }
 
+.tab-button.active,
 .tab-button:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.tab-button.active {
-  color: #FF1493;
-  background-color: rgba(255, 20, 147, 0.1);
-}
-
-.tab-button.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #FF1493;
+  background: #fff;
+  color: #000;
 }
 
 .stats-content {
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
-/* Chart styles */
+/* Chart Styles */
 .chart-container {
-  height: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 20px;
+  border-radius: 12px;
 }
 
 .chart-title {
-  font-size: 0.9rem;
-  color: white;
-  margin-bottom: 16px;
+  font-size: 1.2rem;
+  margin-bottom: 15px;
   text-align: center;
-  font-weight: 500;
+  font-weight: bold;
 }
 
 .bar-chart {
   display: flex;
-  height: 180px;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 16px;
+  height: 200px;
+  margin-bottom: 20px;
 }
 
 .chart-column {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100%;
+  width: 40px;
 }
 
 .chart-bar-container {
-  flex: 1;
+  position: relative;
   width: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .chart-bar {
-  width: 70%;
-  background: linear-gradient(to top, #FF1493, #FF69B4);
-  border-radius: 4px 4px 0 0;
+  background-color: #4caf50;
+  width: 100%;
   position: relative;
-  transition: height 0.5s ease;
-  min-height: 4px;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: height 0.4s ease;
 }
 
 .rides-bar {
-  background: linear-gradient(to top, #4F46E5, #818CF8);
+  background-color: #2196f3;
 }
 
 .chart-value {
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.9);
-  white-space: nowrap;
+  font-size: 0.8rem;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  margin-bottom: 4px;
 }
 
 .chart-label {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
   margin-top: 8px;
+  font-size: 0.8rem;
+  color: #ddd;
 }
 
 .chart-summary {
   display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.summary-item {
+  justify-content: space-around;
   text-align: center;
 }
 
+.summary-item {
+  flex: 1;
+}
+
 .summary-label {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 4px;
+  font-size: 0.9rem;
+  color: #ccc;
 }
 
 .summary-value {
-  font-size: 0.9rem;
-  color: white;
-  font-weight: 500;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #fff;
 }
 
-/* Rating styles */
+/* Ratings Section */
 .rating-summary {
   text-align: center;
   margin-bottom: 20px;
 }
 
 .average-rating {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
-  color: white;
+  margin-bottom: 10px;
 }
 
 .rating-stars {
-  margin: 8px 0;
+  font-size: 1.5rem;
+  margin-bottom: 5px;
 }
 
 .rating-star {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 1.2rem;
-  margin: 0 2px;
+  color: #555;
+  transition: color 0.3s ease;
 }
 
 .rating-star.active {
-  color: #FFD700;
+  color: gold;
 }
 
 .rating-count {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  color: #bbb;
 }
 
 .rating-distribution {
@@ -177,87 +165,74 @@
 .rating-row {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .rating-label {
-  width: 40px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  width: 50px;
 }
 
 .rating-bar-container {
   flex: 1;
-  height: 8px;
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
+  height: 16px;
   margin: 0 10px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .rating-bar {
   height: 100%;
-  background: linear-gradient(to right, #FFD700, #FFA500);
-  border-radius: 4px;
+  background-color: gold;
+  transition: width 0.3s ease;
 }
 
 .rating-percentage {
-  width: 30px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  width: 50px;
   text-align: right;
 }
 
 .recent-ratings {
-  margin-top: 20px;
+  text-align: center;
 }
 
 .recent-title {
-  font-size: 0.9rem;
-  color: white;
+  font-size: 1rem;
   margin-bottom: 10px;
-  font-weight: 500;
 }
 
 .recent-stars {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .recent-rating {
-  display: inline-block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #fff;
 }
 
 .recent-star {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
+/* Rating color variations */
 .rating-5 {
-  background-color: rgba(16, 185, 129, 0.2);
-  color: #10B981;
+  background-color: #4caf50;
 }
-
 .rating-4 {
-  background-color: rgba(79, 70, 229, 0.2);
-  color: #818CF8;
+  background-color: #8bc34a;
 }
-
 .rating-3 {
-  background-color: rgba(245, 158, 11, 0.2);
-  color: #F59E0B;
+  background-color: #ffc107;
 }
-
 .rating-2 {
-  background-color: rgba(249, 115, 22, 0.2);
-  color: #F97316;
+  background-color: #ff9800;
 }
-
 .rating-1 {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: #EF4444;
+  background-color: #f44336;
 }

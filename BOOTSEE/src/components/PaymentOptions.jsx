@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
+import UpiQrCode from "./UpiQrCode";
 
 const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
   const [selectedMethod, setSelectedMethod] = useState("upi");
@@ -107,7 +108,7 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
           }`}
           onClick={() => handleSelectMethod("card")}
         >
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-2 ">
             <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold">C</div>
           </div>
           <p className="text-xs text-gray-400 mb-1">Card</p>
@@ -143,7 +144,7 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Amount</p>
-              <p className="text-secondary font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+              <p className="text-secondary text-white font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Captain UPI ID</p>
@@ -156,6 +157,17 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
               </div>
             </div>
 
+            {/* QR Code for UPI Payment */}
+            <div className="mt-4 flex justify-center">
+              <UpiQrCode
+                upiId="9177813634-2@axl"
+                amount={fare}
+                payeeName="BOOTS Ride"
+                note={`Ride payment for trip ID: ${rideId?.substring(0, 8) || "RIDE"}`}
+              />
+            </div>
+
+            {/* Direct UPI App Links */}
             {captainData?.upiId && (
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <a
@@ -192,7 +204,7 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Amount</p>
-              <p className="text-secondary font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+              <p className="text-secondary text-white font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Card Processing Fee</p>
@@ -218,7 +230,7 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Amount</p>
-              <p className="text-secondary font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+              <p className="text-secondary text-white font-bold">₹{fare?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
             </div>
             <div className="flex justify-between items-center">
               <p className="text-gray-400">Pay to</p>
@@ -235,9 +247,9 @@ const PaymentOptions = ({ fare, onSelectPayment, captainId, rideId }) => {
       </div>
 
       {/* Payment Button */}
-      {selectedMethod === "upi" && captainData?.upiId ? (
+      {selectedMethod === "upi" ? (
         <a
-          href={generateUpiLink()}
+          href={generateUpiLink() || `upi://pay?pa=9177813634-2@axl&pn=${encodeURIComponent("BOOTS Ride")}&am=${fare}&cu=INR&tn=${encodeURIComponent(`Ride payment for trip ID: ${rideId?.substring(0, 8) || "RIDE"}`)}`}
           className="block w-full bg-gradient-to-r from-secondary to-pink-600 text-white py-4 px-4 rounded-xl hover:from-pink-600 hover:to-secondary transition duration-300 font-medium text-center shadow-lg transform hover:-translate-y-1 hover:shadow-xl"
         >
           <div className="flex items-center justify-center">

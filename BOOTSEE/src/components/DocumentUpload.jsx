@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { storage } from "../firebase/config";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import DocumentVerificationService from "../services/DocumentVerificationService";
+import SimpleStorageService from "../services/SimpleStorageService";
+import { toast } from "react-toastify";
 
 const DocumentUpload = ({
   onUpload,
@@ -17,6 +17,7 @@ const DocumentUpload = ({
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [error, setError] = useState(null);
   const [verificationData, setVerificationData] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Handle file selection
   const handleFileChange = (e) => {
@@ -59,10 +60,10 @@ const DocumentUpload = ({
     setIsUploading(true);
     setError(null);
     setVerificationStatus(null);
+    setUploadProgress(0);
 
     try {
       // First, extract data from document using our service
-      // (now using mock implementation)
       const extractedData = await DocumentVerificationService.extractDataFromDocument(selectedFile);
       setVerificationData(extractedData);
 
@@ -100,22 +101,34 @@ const DocumentUpload = ({
         }
       }
 
-      // Skip Firebase Storage entirely for now
-      console.log("Skipping Firebase Storage upload due to CORS issues");
+      // Upload document to Firebase Storage
+      setUploadProgress(30); // Show some progress
+      const downloadURL = await SimpleStorageService.uploadDocument(
+        selectedFile,
+        userId,
+        documentType
+      );
+      setUploadProgress(100); // Complete progress
 
       // Set verification status to success
       setVerificationStatus("success");
 
-      // Call callbacks with success but with mock URL
+      // Show success toast
+      toast.success("Document uploaded and verified successfully!");
+
+      // Call callbacks with success and the actual download URL
       if (onUpload) {
-        onUpload("https://example.com/mock-document-url");
+        onUpload(downloadURL);
       }
 
       if (onVerification) {
-        onVerification(true, extractedData, "https://example.com/mock-document-url");
+        onVerification(true, extractedData, downloadURL);
       }
     } catch (err) {
       console.error("Error processing document:", err);
+
+      // Show error toast
+      toast.error("Error uploading document. Using fallback mode.");
 
       // For testing purposes, we'll simulate success even on error
       console.log("Simulating successful verification despite error");
@@ -132,13 +145,15 @@ const DocumentUpload = ({
       // Set verification status to success
       setVerificationStatus("success");
 
-      // Call callbacks with success
+      // Call callbacks with success but with mock URL
+      const mockUrl = "https://example.com/mock-document-url";
+
       if (onUpload) {
-        onUpload("https://example.com/mock-document-url");
+        onUpload(mockUrl);
       }
 
       if (onVerification) {
-        onVerification(true, mockData, "https://example.com/mock-document-url");
+        onVerification(true, mockData, mockUrl);
       }
     } finally {
       setIsUploading(false);
@@ -275,6 +290,21 @@ const DocumentUpload = ({
           </div>
         )}
 
+        {/* Upload Progress */}
+        {isUploading && uploadProgress > 0 && uploadProgress < 100 && (
+          <div className="w-full mb-4">
+            <div className="w-full bg-gray-700 rounded-full h-2.5">
+              <div
+                className="bg-secondary h-2.5 rounded-full"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1 text-center">
+              Uploading: {uploadProgress.toFixed(0)}%
+            </p>
+          </div>
+        )}
+
         {/* Upload button */}
         {selectedFile && (
           <button
@@ -282,7 +312,14 @@ const DocumentUpload = ({
             className="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-pink-700 transition duration-200"
             disabled={isUploading}
           >
-            {isUploading ? "Uploading & Verifying..." : "Upload & Verify"}
+            {isUploading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                {uploadProgress > 0 ? "Uploading..." : "Verifying..."}
+              </div>
+            ) : (
+              "Upload & Verify"
+            )}
           </button>
         )}
       </div>

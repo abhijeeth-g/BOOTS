@@ -204,7 +204,7 @@ const RideStatus = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          color: "text-yellow-500",
+          color: "text-white",
           bgColor: "bg-yellow-500",
           text: "Waiting for captain to accept your ride"
         };
@@ -215,7 +215,7 @@ const RideStatus = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           ),
-          color: "text-blue-500",
+          color: "text-white",
           bgColor: "bg-blue-500",
           text: "Captain is on the way to your pickup location"
         };
@@ -259,7 +259,7 @@ const RideStatus = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          color: "text-gray-500",
+          color: "text-white",
           bgColor: "bg-gray-500",
           text: "Unknown status"
         };
@@ -283,17 +283,17 @@ const RideStatus = () => {
 
   if (loading) {
     return (
-      <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-lg flex items-center justify-center">
+      <div className="bg-black bg-opacity-70 backdrop-blur-sm rounded-xl p-6 border border-gray-800 shadow-lg flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-secondary border-t-transparent rounded-full mr-3"></div>
-        <p className="text-white">Loading ride status...</p>
+        <p className="text-white font-medium">Loading ride status...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-900 bg-opacity-30 border border-red-500 text-red-300 p-4 rounded-lg flex items-start">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="bg-red-900 bg-opacity-40 border border-red-500 text-white p-4 rounded-lg flex items-start">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span>{error}</span>
@@ -303,16 +303,16 @@ const RideStatus = () => {
 
   if (!activeRide) {
     return (
-      <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-lg">
+      <div className="bg-black bg-opacity-70 backdrop-blur-sm rounded-xl p-6 border border-white shadow-lg">
         <div className="text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-secondary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
-          <h3 className="text-xl font-semibold text-white mb-2">No Active Rides</h3>
-          <p className="text-gray-300 mb-4">You don't have any active rides at the moment.</p>
+          <h3 className="text-xl font-semibold text-secondary mb-2">No Active Rides</h3>
+          <p className="text-white mb-4">You don't have any active rides at the moment.</p>
           <button
             onClick={() => window.location.href = '/book'}
-            className="bg-gradient-to-r from-secondary to-pink-600 text-white py-3 px-6 rounded-xl hover:from-pink-600 hover:to-secondary transition duration-300 shadow-lg transform hover:-translate-y-1 hover:shadow-xl"
+            className="bg-gradient-to-r from-secondary to-pink-600 text-white py-3 px-6 rounded-xl hover:from-pink-600 hover:to-secondary transition duration-300 shadow-lg transform hover:-translate-y-1 hover:shadow-xl font-medium"
           >
             Book a Ride
           </button>
@@ -326,33 +326,37 @@ const RideStatus = () => {
   return (
     <div ref={statusRef}>
       <CaptainCard
-        title="Current Ride Status"
+        title={
+          <span className="text-white font-bold">
+            Current Ride Status
+          </span>
+        }
         icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>}
       >
         {/* Status */}
         <div className="flex items-center mb-6">
-          <div ref={statusIconRef} className={`w-14 h-14 ${statusInfo.bgColor} bg-opacity-20 rounded-full flex items-center justify-center ${statusInfo.color} mr-4`}>
+          <div ref={statusIconRef} className={`w-14 h-14 ${statusInfo.bgColor} bg-opacity-20 rounded-full  flex items-center justify-center ${statusInfo.color} mr-4`}>
             {statusInfo.icon}
           </div>
           <div ref={statusTextRef}>
             <h3 className="text-xl font-semibold text-white">{activeRide.status.charAt(0).toUpperCase() + activeRide.status.slice(1)}</h3>
-            <p className="text-gray-300">{statusInfo.text}</p>
+            <p className="text-white">{statusInfo.text}</p>
           </div>
         </div>
 
         {/* Captain Info */}
         {activeRide.captainId && (
-          <div ref={captainInfoRef} className="bg-black bg-opacity-30 p-4 rounded-lg mb-4 border border-gray-700">
-            <h4 className="text-sm text-gray-400 mb-2">Captain Information</h4>
+          <div ref={captainInfoRef} className="bg-black bg-opacity-70 p-4 rounded-lg mb-4 border border-gray-800">
+            <h4 className="text-sm text-secondary mb-2 font-medium">Captain Information</h4>
             <div className="flex items-center">
               <div className="w-12 h-12 bg-gradient-to-br from-secondary to-pink-600 rounded-full flex items-center justify-center text-lg font-bold text-white mr-4">
                 {activeRide.captainName?.charAt(0) || "C"}
               </div>
               <div>
                 <p className="text-white font-medium">{activeRide.captainName || "Captain"}</p>
-                <div className="flex items-center text-sm text-gray-300">
+                <div className="flex items-center text-sm text-white">
                   <span className="flex items-center">
                     <span className="text-yellow-400 mr-1">★</span>
                     {activeRide.captainRating?.toFixed(1) || "New"}
@@ -401,13 +405,13 @@ const RideStatus = () => {
         {/* Ride Details */}
         <div ref={rideDetailsRef} className="space-y-4">
           {/* Locations */}
-          <div className="bg-black bg-opacity-30 p-4 rounded-lg border border-gray-700">
+          <div className="bg-black bg-opacity-70 p-4 rounded-lg border border-gray-800">
             <div className="flex items-start mb-3">
               <div className="mt-1 mr-3">
                 <div className="w-3 h-3 rounded-full bg-secondary"></div>
               </div>
               <div>
-                <p className="text-xs text-gray-300">Pickup</p>
+                <p className="text-xs text-white text-secondary font-medium">Pickup</p>
                 <p className="text-sm text-white">{activeRide.pickupAddress || "Unknown location"}</p>
               </div>
             </div>
@@ -416,7 +420,7 @@ const RideStatus = () => {
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
               <div>
-                <p className="text-xs text-gray-300">Destination</p>
+                <p className="text-xs text-green-400 font-medium">Destination</p>
                 <p className="text-sm text-white">{activeRide.dropAddress || "Unknown location"}</p>
               </div>
             </div>
@@ -424,23 +428,23 @@ const RideStatus = () => {
 
           {/* Trip Details */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-black bg-opacity-30 p-3 rounded-lg text-center border border-gray-700">
-              <p className="text-xs text-gray-300 mb-1">Distance</p>
+            <div className="bg-black bg-opacity-70 p-3 rounded-lg text-center border border-gray-800">
+              <p className="text-xs text-white mb-1 font-medium">Distance</p>
               <p className="text-lg font-semibold text-white">{activeRide.distance} <span className="text-sm">km</span></p>
             </div>
-            <div className="bg-black bg-opacity-30 p-3 rounded-lg text-center border border-gray-700">
-              <p className="text-xs text-gray-300 mb-1">Fare</p>
-              <p className="text-lg font-semibold text-secondary">₹{activeRide.fare}</p>
+            <div className="bg-black bg-opacity-70 p-3 rounded-lg text-center border border-gray-800">
+              <p className="text-xs text-white mb-1 font-medium">Fare</p>
+              <p className="text-lg text-white font-semibold text-secondary">₹{activeRide.fare}</p>
             </div>
-            <div className="bg-black bg-opacity-30 p-3 rounded-lg text-center border border-gray-700">
-              <p className="text-xs text-gray-300 mb-1">Est. Time</p>
+            <div className="bg-black bg-opacity-70 p-3 rounded-lg text-center border border-gray-800">
+              <p className="text-xs text-white mb-1 font-medium">Est. Time</p>
               <p className="text-lg font-semibold text-white">{activeRide.estimatedTime} <span className="text-sm">mins</span></p>
             </div>
           </div>
 
           {/* Payment Info */}
-          <div className="bg-black bg-opacity-30 p-4 rounded-lg border border-gray-700">
-            <h4 className="text-sm text-gray-400 mb-2">Payment Information</h4>
+          <div className="bg-black bg-opacity-70 p-4 rounded-lg border border-gray-800">
+            <h4 className="text-sm text-white  text-secondary mb-2 font-bold ">Payment Information</h4>
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-white font-medium">
@@ -448,16 +452,16 @@ const RideStatus = () => {
                   {activeRide.paymentMethod === "card" && "Card Payment"}
                   {activeRide.paymentMethod === "cash" && "Cash Payment"}
                 </p>
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-white">
                   {activeRide.paymentStatus === "pending" && "Payment pending"}
                   {activeRide.paymentStatus === "completed" && "Payment completed"}
                   {activeRide.paymentStatus === "failed" && "Payment failed"}
                 </p>
               </div>
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                activeRide.paymentStatus === "completed" ? "bg-green-500 bg-opacity-20 text-green-400" :
-                activeRide.paymentStatus === "failed" ? "bg-red-500 bg-opacity-20 text-red-400" :
-                "bg-yellow-500 bg-opacity-20 text-yellow-400"
+                activeRide.paymentStatus === "completed" ? "bg-green-500 bg-opacity-30 text-white border border-green-800" :
+                activeRide.paymentStatus === "failed" ? "bg-red-500 bg-opacity-30 text-white border border-red-800" :
+                "bg-yellow-500 bg-opacity-30 text-white border border-yellow-800"
               }`}>
                 {activeRide.paymentStatus.charAt(0).toUpperCase() + activeRide.paymentStatus.slice(1)}
               </div>
@@ -465,28 +469,28 @@ const RideStatus = () => {
           </div>
 
           {/* Timestamps */}
-          <div className="bg-black bg-opacity-30 p-4 rounded-lg border border-gray-700">
-            <h4 className="text-sm text-gray-400 mb-2">Ride Timeline</h4>
+          <div className="bg-black bg-opacity-70 p-4 rounded-lg border border-gray-800">
+            <h4 className="text-sm text-white text-secondary mb-2 font-medium">Ride Timeline</h4>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-300">Requested</p>
+                <p className="text-sm text-white text-secondary font-medium">Requested</p>
                 <p className="text-sm text-white">{formatDate(activeRide.createdAt)}</p>
               </div>
               {activeRide.acceptedAt && (
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-300">Accepted</p>
+                  <p className="text-sm text-blue-400 font-medium">Accepted</p>
                   <p className="text-sm text-white">{formatDate(activeRide.acceptedAt)}</p>
                 </div>
               )}
               {activeRide.startedAt && (
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-300">Started</p>
+                  <p className="text-sm text-yellow-400 font-medium">Started</p>
                   <p className="text-sm text-white">{formatDate(activeRide.startedAt)}</p>
                 </div>
               )}
               {activeRide.completedAt && (
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-300">Completed</p>
+                  <p className="text-sm text-green-400 font-medium">Completed</p>
                   <p className="text-sm text-white">{formatDate(activeRide.completedAt)}</p>
                 </div>
               )}
@@ -498,11 +502,11 @@ const RideStatus = () => {
       {/* Rating Dialog */}
       {showRating && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-xl border border-gray-700 shadow-2xl max-w-md w-full">
+          <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-xl border border-gray-800 shadow-2xl max-w-md w-full">
             {!ratingSubmitted ? (
               <>
                 <h3 className="text-2xl font-bold text-white mb-2 text-center">Rate Your Ride</h3>
-                <p className="text-gray-300 mb-6 text-center">How was your experience with {activeRide.captainName || "your captain"}?</p>
+                <p className="text-white mb-6 text-center">How was your experience with {activeRide.captainName || "your captain"}?</p>
 
                 <div className="flex justify-center mb-6">
                   <RatingStars
@@ -515,14 +519,14 @@ const RideStatus = () => {
                 <div className="flex justify-between">
                   <button
                     onClick={() => setShowRating(false)}
-                    className="bg-gray-700 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition duration-300"
+                    className="bg-gray-700 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition duration-300 font-medium"
                   >
                     Skip
                   </button>
                   <button
                     onClick={submitRating}
                     disabled={!rating}
-                    className="bg-gradient-to-r from-secondary to-pink-600 text-white py-3 px-6 rounded-xl hover:from-pink-600 hover:to-secondary transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-gradient-to-r from-secondary to-pink-600 text-white py-3 px-6 rounded-xl hover:from-pink-600 hover:to-secondary transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                   >
                     Submit Rating
                   </button>
@@ -533,8 +537,8 @@ const RideStatus = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 className="text-2xl font-bold text-white mb-2">Thank You!</h3>
-                <p className="text-gray-300 mb-6">Your rating has been submitted successfully.</p>
+                <h3 className="text-2xl font-bold text-secondary mb-2">Thank You!</h3>
+                <p className="text-white mb-6">Your rating has been submitted successfully.</p>
               </div>
             )}
           </div>
