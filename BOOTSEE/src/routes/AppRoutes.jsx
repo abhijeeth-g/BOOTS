@@ -18,6 +18,7 @@ import CaptainDashboard from "../pages/captain/CaptainDashboard";
 import CaptainProfile from "../pages/captain/CaptainProfile";
 import CaptainRideHistory from "../pages/captain/CaptainRideHistory";
 import CaptainEarnings from "../pages/captain/CaptainEarnings";
+import CaptainPaymentPage from "../pages/captain/CaptainPaymentPage";
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -41,6 +42,8 @@ const AppRoutes = () => {
       <Route path="/captain/profile" element={user ? <CaptainProfile /> : <Navigate to="/captain/login" />} />
       <Route path="/captain/rides" element={user ? <CaptainRideHistory /> : <Navigate to="/captain/login" />} />
       <Route path="/captain/earnings" element={user ? <CaptainEarnings /> : <Navigate to="/captain/login" />} />
+      <Route path="/captain/payment/:rideId" element={user ? <CaptainPaymentPage /> : <Navigate to="/captain/login" />} />
+      <Route path="/captain/payment" element={user ? <CaptainPaymentPage /> : <Navigate to="/captain/login" />} />
 
       {/* Payment Routes */}
       <Route path="/payment" element={user ? <PaymentPage /> : <Navigate to="/login" />} />

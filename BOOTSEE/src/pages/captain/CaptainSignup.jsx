@@ -368,7 +368,6 @@ const CaptainSignup = () => {
         onVerification={handleDrivingLicenseVerification}
         userId={tempUserId}
         documentType="drivingLicense"
-        verifyGender={false}
       />
 
       {/* Aadhar Card Upload */}
@@ -377,7 +376,6 @@ const CaptainSignup = () => {
         onVerification={handleAadharVerification}
         userId={tempUserId}
         documentType="aadhar"
-        verifyGender={false}
       />
     </div>
   );

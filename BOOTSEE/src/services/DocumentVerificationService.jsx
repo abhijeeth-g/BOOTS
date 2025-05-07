@@ -11,13 +11,19 @@ export const DocumentVerificationService = {
       // Determine document type and gender from file name if possible
       const fileName = documentFile.name.toLowerCase();
       let mockDocumentType = "Unknown";
-      let mockGender = "female"; // Default for testing
+      let mockGender = ""; // No default gender
+      let mockIsVerified = true; // Default to verified
 
-      // Check if filename contains gender indicators
+      // Check if filename contains gender indicators (for testing only)
       if (fileName.includes("male")) {
         mockGender = "male";
       } else if (fileName.includes("female")) {
         mockGender = "female";
+      }
+
+      // Check if filename contains verification indicators (for testing only)
+      if (fileName.includes("invalid") || fileName.includes("fake") || fileName.includes("unverified")) {
+        mockIsVerified = false;
       }
 
       // Determine document type
@@ -35,13 +41,14 @@ export const DocumentVerificationService = {
         gender: mockGender,
         dateOfBirth: "01/01/1990",
         documentNumber: "ABCD1234XYZ",
-        documentType: mockDocumentType
+        documentType: mockDocumentType,
+        isVerified: mockIsVerified
       };
 
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      console.log(`Document processed: Type=${mockDocumentType}, Gender=${mockGender}`);
+      console.log(`Document processed: Type=${mockDocumentType}, Gender=${mockGender}, Verified=${mockIsVerified}`);
 
       return mockData;
     } catch (error) {
@@ -50,14 +57,10 @@ export const DocumentVerificationService = {
     }
   },
 
-  // Verify if user is eligible (female) based on document data
+  // Verify if document is valid (not checking gender anymore)
   verifyUserEligibility: (documentData) => {
-    // Check if gender is female
-    if (documentData && documentData.gender) {
-      const gender = documentData.gender.toLowerCase();
-      return gender === "female" || gender === "f";
-    }
-    return false;
+    // Check if document is verified
+    return documentData && documentData.isVerified !== false;
   },
 
   // Verify driving license for captains

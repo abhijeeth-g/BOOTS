@@ -3,7 +3,7 @@
  * Provides basic methods for uploading files to Firebase Storage
  */
 
-import { storage } from "../firebase/config.jsx";
+import { storage } from "../firebase/config";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 /**
@@ -40,20 +40,38 @@ export const uploadFile = async (file, path) => {
     const storageRef = ref(storage, path);
 
     // Upload file
+    console.log("Uploading file to Firebase Storage:", path);
     const snapshot = await uploadBytes(storageRef, file);
+    console.log("File uploaded successfully:", snapshot);
 
     // Get download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log("Download URL obtained:", downloadURL);
 
     return downloadURL;
   } catch (error) {
     console.error("Error uploading file:", error);
 
+    // Log more detailed error information
+    if (error.code) {
+      console.error("Error code:", error.code);
+    }
+
+    // Handle specific Firebase Storage errors
+    if (error.code === 'storage/unauthorized') {
+      console.error("User doesn't have permission to access the object");
+    } else if (error.code === 'storage/canceled') {
+      console.error("User canceled the upload");
+    } else if (error.code === 'storage/unknown') {
+      console.error("Unknown error occurred, inspect error.serverResponse");
+    }
+
     // If there's a CORS error, return a mock URL
     if (error.message && (
         error.message.includes("CORS") ||
         error.message.includes("network error") ||
-        error.message.includes("permission_denied"))) {
+        error.message.includes("permission_denied") ||
+        error.message.includes("storage/unauthorized"))) {
       console.log("CORS or permission issue detected. Using mock URL.");
     }
 

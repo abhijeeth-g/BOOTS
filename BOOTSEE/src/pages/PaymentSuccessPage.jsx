@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import AuthBackground from "../components/AuthBackground";
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [countdown, setCountdown] = useState(5);
+
+  // Get ride data and amount from location state
+  const rideData = location.state?.rideData || null;
+  const amount = location.state?.amount || 0;
 
   // Auto-redirect to home after countdown
   useEffect(() => {
@@ -18,6 +23,39 @@ const PaymentSuccessPage = () => {
 
   // Generate a random transaction ID
   const transactionId = `TXN${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+
+  // Format date
+  const formatDate = (timestamp) => {
+    if (!timestamp) return new Date().toLocaleString();
+
+    try {
+      let date;
+
+      // Handle different timestamp formats
+      if (timestamp.toDate) {
+        // Firestore Timestamp
+        date = timestamp.toDate();
+      } else if (timestamp instanceof Date) {
+        // JavaScript Date
+        date = timestamp;
+      } else if (typeof timestamp === 'string') {
+        // ISO string or other string format
+        date = new Date(timestamp);
+      } else {
+        // Try to convert to date as a last resort
+        date = new Date(timestamp);
+      }
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return new Date().toLocaleString();
+      }
+
+      return date.toLocaleString();
+    } catch (error) {
+      return new Date().toLocaleString();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex items-center justify-center p-4 relative overflow-hidden">
@@ -61,11 +99,52 @@ const PaymentSuccessPage = () => {
               <span className="text-secondary font-medium">UPI</span>
             </div>
 
+            <div className="flex justify-between mb-2">
+              <span className="text-white">Amount:</span>
+              <span className="text-green-400 font-medium">₹{amount}</span>
+            </div>
+
             <div className="flex justify-between">
               <span className="text-white">Status:</span>
               <span className="text-green-400 font-medium">Completed</span>
             </div>
           </div>
+
+          {/* Ride Details */}
+          {rideData && (
+            <div className="bg-black bg-opacity-70 p-4 rounded-lg mb-6 border border-gray-800">
+              <h3 className="text-secondary font-medium mb-3">Ride Details</h3>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Ride Date:</span>
+                  <span className="text-white">{formatDate(rideData.createdAt)}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-400">From:</span>
+                  <span className="text-white max-w-[200px] text-right truncate">{rideData.pickupAddress}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-400">To:</span>
+                  <span className="text-white max-w-[200px] text-right truncate">{rideData.dropAddress}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Distance:</span>
+                  <span className="text-white">{rideData.distance} km</span>
+                </div>
+
+                {rideData.captainName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Captain:</span>
+                    <span className="text-white">{rideData.captainName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex flex-col gap-3">

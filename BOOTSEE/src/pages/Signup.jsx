@@ -106,15 +106,9 @@ const Signup = () => {
         return;
       }
 
-      // Check if user is eligible (female)
-      if (documentData && documentData.gender) {
-        const gender = documentData.gender.toLowerCase();
-        if (gender !== "female" && gender !== "f") {
-          setError("Sorry, only female users are eligible to create an account");
-          return;
-        }
-      } else {
-        setError("Unable to verify gender from document");
+      // Check if document is verified
+      if (!documentData || documentData.isVerified === false) {
+        setError("Document verification failed. Please upload a valid document.");
         return;
       }
     }
@@ -285,7 +279,7 @@ const Signup = () => {
           <li>Driving License</li>
         </ul>
         <p className="text-sm text-white">
-          <span className="text-secondary">Note:</span> Only female users are eligible to create an account.
+          <span className="text-secondary">Note:</span> Please ensure your document is valid and clearly visible for verification.
         </p>
       </div>
 
@@ -294,7 +288,6 @@ const Signup = () => {
         onVerification={handleDocumentVerification}
         userId={tempUserId}
         documentType="identity"
-        verifyGender={true}
       />
     </div>
   );

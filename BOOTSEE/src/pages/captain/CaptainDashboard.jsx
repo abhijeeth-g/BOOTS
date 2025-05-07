@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import {
@@ -29,6 +30,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const CaptainDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [rideRequests, setRideRequests] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -1131,12 +1133,23 @@ const CaptainDashboard = () => {
                     Start Ride
                   </button>
                 ) : (
-                  <button
-                    onClick={completeRide}
-                    className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200"
-                  >
-                    Complete Ride
-                  </button>
+                  <>
+                    <button
+                      onClick={completeRide}
+                      className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200"
+                    >
+                      Complete Ride
+                    </button>
+                    <button
+                      onClick={() => navigate(`/captain/payment/${activeRide.id}`, { state: { rideData: activeRide } })}
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Show QR
+                    </button>
+                  </>
                 )}
               </div>
             </CaptainCard>
